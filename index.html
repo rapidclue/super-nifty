@@ -1,0 +1,3338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nifty 50 Quantitative Trading System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-card: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --bg-code: #f1f5f9;
+  --bg-accent: #ede9fe;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-code: #334155;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --teal: #0f766e;
+  --orange: #ea580c;
+  --pink: #be185d;
+  --indigo: #4338ca;
+  --sky: #0369a1;
+  --green: #65a30d;
+  --violet: #9333ea;
+  --amber: #b45309;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'DM Mono', 'SF Mono', monospace;
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+.container { max-width: 820px; margin: 0 auto; padding: 20px 16px; }
+
+/* ─── Top Navigation ─── */
+.top-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.top-nav .container { padding: 0 16px; }
+.nav-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900; font-size: 18px;
+  color: var(--text-primary);
+  text-align: center; margin-bottom: 10px;
+}
+.nav-tabs {
+  display: flex; gap: 4px; overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+  padding-bottom: 2px;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+.nav-tab {
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer; white-space: nowrap;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.nav-tab:hover { background: var(--bg-card); }
+.nav-tab.active {
+  background: var(--purple);
+  color: white;
+  border-color: var(--purple);
+}
+
+/* ─── Page Sections ─── */
+.page { display: none; }
+.page.active { display: block; }
+.page-header { text-align: center; margin-bottom: 20px; padding-top: 16px; }
+.page-label {
+  font-size: 10px; letter-spacing: 5px;
+  color: var(--text-muted); text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.page-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 24px; font-weight: 900;
+  color: var(--text-primary);
+}
+.page-subtitle {
+  font-size: 11.5px; color: var(--text-secondary);
+  margin-top: 6px; line-height: 1.5;
+}
+
+/* ─── Filter Pills ─── */
+.filter-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  justify-content: center; margin-bottom: 16px;
+}
+.filter-pill {
+  padding: 4px 10px; font-size: 10px; font-weight: 600;
+  border-radius: 16px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-muted);
+  cursor: pointer; font-family: inherit;
+  transition: all 0.12s;
+}
+.filter-pill.active {
+  border-color: var(--purple);
+  background: rgba(124,58,237,0.08);
+  color: var(--purple);
+}
+
+/* ─── Cards ─── */
+.card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.card:hover { border-color: #cbd5e1; }
+.card.expanded { background: var(--bg-hover); }
+.card-header {
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon { font-size: 22px; flex-shrink: 0; }
+.card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: var(--text-primary);
+}
+.card-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.card-summary {
+  font-size: 11.5px; color: var(--text-secondary);
+  margin-top: 8px; padding-left: 32px; line-height: 1.6;
+}
+.card-arrow {
+  font-size: 16px; color: var(--text-muted);
+  transition: transform 0.2s; margin-left: auto;
+}
+.card.expanded .card-arrow { transform: rotate(180deg); }
+
+/* ─── Expandable Content ─── */
+.card-details { display: none; margin-top: 14px; padding-left: 32px; }
+.card.expanded .card-details { display: flex; flex-direction: column; gap: 10px; }
+
+/* ─── Signal Items ─── */
+.signal-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+.signal-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700;
+}
+.signal-formula {
+  font-size: 10.5px; color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  background: var(--bg-code);
+  padding: 3px 7px; border-radius: 4px;
+  margin: 4px 0 6px;
+}
+.signal-note { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ─── Badges ─── */
+.badge {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.8px;
+  padding: 2px 7px; border-radius: 3px;
+  color: white; white-space: nowrap; display: inline-block;
+  text-transform: uppercase;
+}
+.badge-high { background: var(--red); }
+.badge-medium { background: #f59e0b; color: #000; }
+.badge-low { background: #6b7280; }
+
+/* ─── Code Blocks ─── */
+.code-block {
+  font-size: 11px; color: var(--text-code); line-height: 1.7;
+  font-family: 'DM Mono', monospace;
+  background: var(--bg-code);
+  padding: 14px 16px; border-radius: 6px;
+  border: 1px solid var(--border);
+  white-space: pre-wrap; overflow-x: auto;
+  margin-top: 10px;
+}
+
+/* ─── Info Box ─── */
+.info-box {
+  padding: 14px 18px; border-radius: 8px;
+  margin-bottom: 14px;
+}
+.info-box.purple {
+  background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+  border: 1px solid #c7d2fe;
+}
+.info-box-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px; font-weight: 700;
+  margin-bottom: 8px;
+}
+.info-box-text {
+  font-size: 11px; color: var(--text-secondary); line-height: 1.8;
+}
+.info-box-text strong { color: var(--text-primary); }
+
+/* ─── Rank Number ─── */
+.rank-num {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900;
+  font-family: 'Outfit', sans-serif;
+  flex-shrink: 0;
+}
+
+/* ─── Detail Rows ─── */
+.detail-row {
+  padding: 10px 12px; border-radius: 6px;
+  background: var(--bg-code); border: 1px solid var(--border);
+}
+.detail-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.detail-text { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ─── Search ─── */
+.search-box {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px; font-family: inherit;
+  outline: none; margin-bottom: 16px;
+}
+.search-box:focus { border-color: var(--purple); }
+.search-count { font-size: 10px; color: var(--text-muted); text-align: center; margin: -10px 0 12px; }
+
+/* ─── Category Stats ─── */
+.stats-row {
+  display: flex; gap: 4px; justify-content: center;
+  flex-wrap: wrap; margin-bottom: 16px;
+}
+.stat-chip {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px;
+  text-align: center; cursor: pointer;
+  transition: all 0.12s;
+}
+.stat-chip:hover { border-color: #cbd5e1; }
+.stat-chip-label { font-size: 9px; letter-spacing: 0.5px; }
+.stat-chip-num { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+
+/* ─── Sub Navigation (for multi-module pages) ─── */
+.sub-nav {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  justify-content: center; flex-wrap: wrap;
+}
+.sub-nav-btn {
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card); font-family: inherit;
+  text-align: center; min-width: 80px;
+  transition: all 0.12s;
+}
+.sub-nav-btn .icon { font-size: 16px; }
+.sub-nav-btn .label {
+  font-size: 8px; font-weight: 700;
+  color: var(--text-muted); line-height: 1.2;
+  margin-top: 2px;
+}
+.sub-nav-btn.active { border-color: var(--purple); background: rgba(124,58,237,0.06); }
+.sub-nav-btn.active .label { color: var(--purple); }
+
+/* ─── Nifty-specific note ─── */
+.nifty-note {
+  margin: 12px 0 0 32px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.nifty-note-label { font-weight: 700; margin-bottom: 4px; }
+.nifty-note-text { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ─── Signal list (encyclopedia) ─── */
+.signal-list-item {
+  font-size: 11px; color: var(--text-secondary);
+  padding: 4px 8px; border-radius: 4px;
+  line-height: 1.5;
+  border-left: 2px solid transparent;
+}
+.signal-list-item:nth-child(even) { background: var(--bg-code); }
+.signal-list-item .num {
+  color: var(--text-muted); font-size: 9px; margin-right: 6px;
+}
+.signal-list-item.highlight {
+  border-left-color: var(--purple);
+  background: rgba(124,58,237,0.06);
+  color: var(--purple); font-weight: 700;
+}
+
+/* ─── Phase header ─── */
+.phase-selector { display: flex; gap: 6px; margin-bottom: 16px; justify-content: center; }
+.phase-btn {
+  padding: 10px 16px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card); font-family: inherit;
+  flex: 1; text-align: center;
+  transition: all 0.12s;
+}
+.phase-btn .week { font-size: 12px; font-weight: 800; }
+.phase-btn .range { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+.phase-btn.active { border-color: var(--purple); background: rgba(124,58,237,0.06); }
+.phase-btn.active .week { color: var(--purple); }
+
+/* ─── Responsive ─── */
+@media (max-width: 640px) {
+  .nav-title { font-size: 15px; }
+  .page-title { font-size: 20px; }
+  .card { padding: 12px 14px; }
+  .card-details { padding-left: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Navigation -->
+<nav class="top-nav">
+  <div class="container">
+    <div class="nav-title">Nifty 50 — Quantitative Trading System</div>
+    <div class="nav-tabs" id="mainNav">
+      <button class="nav-tab active" data-page="features">📊 Alpha Features</button>
+      <button class="nav-tab" data-page="encyclopedia">📚 Encyclopedia (600+)</button>
+      <button class="nav-tab" data-page="top30">🎯 Top 30 Priority</button>
+      <button class="nav-tab" data-page="risk">🛡️ Risk Management</button>
+      <button class="nav-tab" data-page="strike">⚡ Strike & Timing</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 1: ALPHA FEATURES (108 signals, 9 categories)     -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page active" id="page-features"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 2: ENCYCLOPEDIA (600+ signals)                     -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-encyclopedia"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 3: TOP 30 PRIORITY                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-top30"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 4: RISK MANAGEMENT                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-risk"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 5: STRIKE & TIMING                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-strike"></div>
+
+</div>
+
+<script>
+// ─── DATA ───
+
+const featuresData = [
+  {
+    id: "momentum",
+    icon: "🚀",
+    name: "Momentum & Trend",
+    color: "#dc2626",
+    accent: "#fca5a5",
+    bg: "#fef2f2",
+    niftyNote: "Nifty trends are heavily influenced by global cues (SGX Nifty / GIFT Nifty overnight), US market close, and FII positioning. Momentum signals must account for gap openings.",
+    signals: [
+      { name: "Nifty Price Momentum (Multi-Window)", formula: "Return over 5d, 10d, 21d, 63d, 126d, 252d", importance: "high", note: "Use multiple lookback windows simultaneously. 21d and 63d are strongest for Nifty. Normalize by ATR for comparability across regimes." },
+      { name: "GIFT Nifty Overnight Gap", formula: "(GIFT Nifty pre-open - Nifty prev close) / Nifty prev close", importance: "high", note: "Nifty-specific. GIFT Nifty (formerly SGX Nifty) trades overnight. The gap predicts opening direction with ~70% accuracy. Essential signal." },
+      { name: "US Market Overnight Signal", formula: "S&P 500 / Nasdaq close-to-close return after Indian market hours", importance: "high", note: "India opens 10+ hours after US close. Nifty absorbs US moves at open. Combine with GIFT Nifty for confirmation." },
+      { name: "Volume-Weighted Momentum", formula: "Σ(return_i × volume_i) / Σ(volume_i) over N days", importance: "high", note: "Moves backed by volume are more sustainable. Especially important during expiry weeks when volumes spike." },
+      { name: "Nifty vs Bank Nifty Relative Momentum", formula: "Nifty return / Bank Nifty return (rolling ratio)", importance: "medium", note: "Bank Nifty leads Nifty ~60% of the time due to banking sector weight. Divergence is a strong signal." },
+      { name: "Advance-Decline Momentum", formula: "Rolling sum of (Advancing - Declining stocks) in Nifty 50", importance: "medium", note: "Breadth confirmation. If Nifty rises but A/D is negative, the rally is narrow and fragile. Classic divergence signal." },
+      { name: "Sector Rotation Momentum", formula: "Relative strength ranking of Nifty sectoral indices", importance: "medium", note: "Track Nifty IT, Bank, Pharma, Auto, Metal, Realty, FMCG sector indices. Money rotates — follow the flow." },
+      { name: "Moving Average Slope", formula: "Slope of 20 EMA and 50 EMA (degrees or rate)", importance: "medium", note: "Not just crossover — the slope tells trend strength. Steepening slope = accelerating trend." },
+      { name: "Donchian Breakout", formula: "Price vs 20-day / 55-day high-low channel", importance: "medium", note: "Nifty respects Donchian channels well due to institutional support/resistance levels. Works better than Bollinger for breakouts." },
+      { name: "Heikin-Ashi Trend Filter", formula: "Consecutive HA candles of same color", importance: "low", note: "Smoothed candle filter to avoid whipsaws. Use as confirmation, not primary signal. 5+ consecutive HA candles = strong trend." },
+      { name: "ADX Trend Strength", formula: "14-period ADX value and DI+/DI- crossover", importance: "low", note: "ADX > 25 = trending, < 20 = range-bound. Use to switch between momentum and mean-reversion models." },
+      { name: "Monthly Expiry Momentum", formula: "Nifty return in last 3 days before monthly expiry", importance: "medium", note: "India-specific. Option selling pressure often pins Nifty near max pain. Momentum tends to stall or reverse near expiry. Monthly expiry is last Tuesday." },
+    ],
+  },
+  {
+    id: "meanrev",
+    icon: "🔄",
+    name: "Mean Reversion",
+    color: "#2563eb",
+    accent: "#93c5fd",
+    bg: "#eff6ff",
+    niftyNote: "Nifty mean-reverts strongly intraday, especially during expiry weeks. The index has well-defined support/resistance zones due to heavy options activity pinning price near round numbers.",
+    signals: [
+      { name: "RSI (Multi-Timeframe)", formula: "14-period RSI on 5min, 15min, hourly, daily", importance: "high", note: "Daily RSI < 30 on Nifty has historically produced positive 5-day forward returns ~72% of the time. Combine timeframes for confirmation." },
+      { name: "Nifty Z-Score", formula: "(Nifty - 20d SMA) / 20d StdDev", importance: "high", note: "Core mean reversion signal. Z > 2 = overbought, Z < -2 = oversold. Nifty reverts from Z > 2.5 about 80% of time within 5 sessions." },
+      { name: "Bollinger Band %B", formula: "(Price - Lower Band) / (Upper - Lower), 20d/2σ", importance: "high", note: "%B > 1 or < 0 = outside bands. Nifty outside upper Bollinger band tends to revert within 2-3 sessions." },
+      { name: "VWAP Reversion", formula: "(Current Price - Intraday VWAP) / VWAP", importance: "high", note: "Critical for intraday. Nifty tends to return to VWAP in the afternoon session. Deviation > 0.5% is actionable." },
+      { name: "Max Pain Reversion", formula: "(Nifty - Options Max Pain) / ATR", importance: "high", note: "INDIA SPECIFIC. Nifty has massive options OI. Price gravitates toward max pain, especially in last 3 days of expiry. Very strong signal." },
+      { name: "Overnight Gap Fill Probability", formula: "Gap size vs historical gap fill rate at that size", importance: "medium", note: "Nifty fills ~65% of gaps > 50 points within the session. Larger gaps fill less often. Use gap size buckets to calibrate." },
+      { name: "Intraday Range Mean Reversion", formula: "(Price - Day Low) / (Day High - Day Low) — session progress adjusted", importance: "medium", note: "If Nifty has used 80%+ of its expected daily range early in the session, mean reversion probability increases sharply." },
+      { name: "Put-Call Ratio Extremes", formula: "Nifty PCR at extreme levels (< 0.7 or > 1.3)", importance: "high", note: "PCR > 1.3 = excessive put buying = contrarian bullish. PCR < 0.7 = excessive call buying = contrarian bearish. Nifty-specific contrarian indicator." },
+      { name: "Sector-Neutral Residual", formula: "Nifty return - Beta × Bank Nifty return residual", importance: "medium", note: "Remove banking sector influence, trade the residual. Useful when Bank Nifty is driving Nifty disproportionately." },
+      { name: "Stochastic Oscillator", formula: "14-period %K and %D with overbought/oversold zones", importance: "low", note: "Works well on 15-min Nifty chart for intraday reversals. Double bottom in oversold zone = strong long entry." },
+      { name: "Fibonacci Retracement Levels", formula: "38.2%, 50%, 61.8% of prior swing", importance: "medium", note: "Nifty respects Fib levels due to institutional algos programmed around them. Self-fulfilling but useful as support/resistance." },
+      { name: "Weekly Expiry Pin Risk", formula: "Distance to nearest 50-point strike on Monday", importance: "high", note: "INDIA SPECIFIC. Weekly Nifty options expire Tuesday. Monday afternoon, index often pins near highest OI strike. Trade the pin." },
+    ],
+  },
+  {
+    id: "options",
+    icon: "🎯",
+    name: "Options & Derivatives",
+    color: "#7c3aed",
+    accent: "#7c3aed",
+    bg: "#f5f3ff",
+    niftyNote: "India has the WORLD'S most active index options market. Nifty options OI and Greeks provide signals unavailable in most other markets. This is your biggest edge.",
+    signals: [
+      { name: "Option Chain OI Distribution", formula: "Open Interest heatmap across strikes", importance: "high", note: "THE most important India-specific signal. Heavy call OI = resistance, heavy put OI = support. Map the OI walls — Nifty respects them." },
+      { name: "OI Change (Strike-Level)", formula: "ΔOI per strike for calls and puts separately", importance: "high", note: "OI buildup at a strike = conviction. Call OI buildup = writers selling = resistance. Put OI buildup = support. Track intraday changes." },
+      { name: "Put-Call Ratio (OI-Based)", formula: "Total Put OI / Total Call OI for Nifty", importance: "high", note: "Different from volume PCR. OI-based PCR is more stable and reflects positioning, not just trading. Rising PCR from low = bullish reversal signal." },
+      { name: "Max Pain Strike", formula: "Strike where combined buyer losses are maximized", importance: "high", note: "Price gravitates here near expiry. Calculate for both weekly and monthly. Deviation from max pain > 200 points creates reversion opportunity." },
+      { name: "Implied Volatility Rank (IVR)", formula: "(Current IV - 52wk low IV) / (52wk high IV - 52wk low IV)", importance: "high", note: "India VIX above 20 = fear, below 12 = complacency. IVR tells you if current IV is high or low relative to its own history." },
+      { name: "India VIX Level & Change", formula: "India VIX absolute level and daily % change", importance: "high", note: "VIX spike > 15% in a day = panic selling, often marks short-term bottom. VIX crush after event = bullish. Critical regime signal." },
+      { name: "IV Skew (Call vs Put)", formula: "OTM Put IV - OTM Call IV at equidistant strikes", importance: "medium", note: "Steepening put skew = fear building. Flattening skew = complacency. Changes in skew predict direction better than level." },
+      { name: "IV Term Structure", formula: "Weekly expiry IV vs Monthly expiry IV", importance: "medium", note: "When weekly IV > monthly IV (backwardation) = near-term fear/event. Contango is normal. Backwardation = potential big move coming." },
+      { name: "Gamma Exposure (GEX)", formula: "Net gamma of market makers across all strikes", importance: "high", note: "Positive GEX = dealers hedge by selling rallies & buying dips = suppressed volatility. Negative GEX = dealers amplify moves = explosive. Game-changer signal." },
+      { name: "Delta Exposure (DEX)", formula: "Net delta of all options positions", importance: "medium", note: "Aggregate directional exposure of the options market. Large positive DEX = market positioned long, vulnerable to sell-off." },
+      { name: "OI Unwinding Detection", formula: "Price up + OI down = long unwinding, Price down + OI down = short covering", importance: "high", note: "Classic Indian market analysis. OI unwinding vs fresh positioning tells you if a move is sustainable or exhausting." },
+      { name: "Weekly vs Monthly Expiry Basis", formula: "Premium difference between weekly and monthly futures", importance: "medium", note: "Tracks short-term vs medium-term sentiment divergence. Widening basis = bullish expectations building." },
+    ],
+  },
+  {
+    id: "flow",
+    icon: "💰",
+    name: "FII / DII / Participant Flows",
+    color: "#0f766e",
+    accent: "#5eead4",
+    bg: "#f0fdfa",
+    niftyNote: "FII (Foreign Institutional Investor) flows are THE dominant force in Indian markets. FII data is published daily by NSE. This is a massive edge — most global markets don't have this granularity.",
+    signals: [
+      { name: "FII Cash Market Net (Daily)", formula: "FII Buy Value - FII Sell Value in cash segment", importance: "high", note: "Single most important flow signal. Sustained FII buying > ₹1000cr/day = bullish. Sustained selling = bearish. Published by NSE daily at 8:30 PM." },
+      { name: "FII F&O Positioning", formula: "FII net long/short in index futures + options", importance: "high", note: "FII index futures long/short ratio predicts next-day Nifty direction with ~65% accuracy. Published in NSE's participant-wise OI data." },
+      { name: "DII Cash Market Net (Daily)", formula: "DII Buy Value - DII Sell Value", importance: "high", note: "DII (mutual funds, insurance) are the counterweight to FII. When FII sells and DII buys heavily, it often marks a bottom. DII provides floor support." },
+      { name: "FII-DII Divergence", formula: "FII net - DII net (when they disagree)", importance: "high", note: "Maximum divergence (FII selling, DII buying aggressively) historically marks major turning points. Track the cumulative divergence." },
+      { name: "FII Long-Short Ratio", formula: "FII Long Contracts / FII Short Contracts in index futures", importance: "high", note: "Ratio > 3 = very bullish positioning. Ratio < 1 = very bearish. Extremes (> 5 or < 0.5) often mark reversals due to crowding." },
+      { name: "Pro/Client Positioning", formula: "Proprietary vs Client net positions in F&O", importance: "medium", note: "Proprietary traders (smart money) vs retail clients. When pros and clients are on opposite sides, follow the pros." },
+      { name: "SIP Flow Estimate", formula: "Monthly SIP inflow to equity mutual funds", importance: "medium", note: "India-specific structural flow. ₹15,000+ crore/month SIP creates passive buying pressure. This is the DII floor. Rising SIP = long-term bullish." },
+      { name: "FII Dollar Flow Adjusted", formula: "FII flow in INR adjusted for USD/INR movement", importance: "medium", note: "FII flows are in dollars. A strong INR makes India more attractive. Separate currency effect from equity conviction." },
+      { name: "Mutual Fund Cash Levels", formula: "Equity MF cash as % of AUM (from AMFI data)", importance: "medium", note: "High cash = dry powder for buying dips. Low cash = fully invested, limited buying power. Published monthly by AMFI." },
+      { name: "FII Sector-Level Flow", formula: "FII buying/selling by sector (from depository data)", importance: "medium", note: "Track which sectors FII is rotating into. Available from NSDL/CDSL with 1-day lag. Sector rotation signal." },
+      { name: "IPO / FPO Absorption", formula: "Capital locked in upcoming IPOs / FPOs", importance: "low", note: "Large IPO pipelines drain liquidity from secondary markets. Heavy IPO season = short-term Nifty headwind." },
+      { name: "ETF Flow (Nifty ETFs)", formula: "Net creation/redemption units in Nifty 50 ETFs", importance: "medium", note: "Passive flow indicator. Large creations = institutional buying via ETFs. Track Nifty BeES and other major ETFs." },
+    ],
+  },
+  {
+    id: "macro",
+    icon: "🌐",
+    name: "India Macro & Cross-Asset",
+    color: "#ea580c",
+    accent: "#fdba74",
+    bg: "#fff7ed",
+    niftyNote: "India macro has unique drivers: RBI policy, monsoon, government spending cycles, crude oil dependence, and USD/INR. These create predictable seasonal patterns in Nifty.",
+    signals: [
+      { name: "USD/INR Rate & Trend", formula: "USD/INR level, daily change, 20d trend", importance: "high", note: "Weak INR = FII selling pressure (currency loss). Sharp INR depreciation (>0.5% in a day) correlates with Nifty sell-offs. RBI intervention level is key." },
+      { name: "US 10Y Treasury Yield", formula: "US 10Y yield level and daily change", importance: "high", note: "Rising US yields = capital outflow from EM including India. 10Y > 4.5% historically pressures Nifty. Single most important global macro signal for India." },
+      { name: "Crude Oil Price", formula: "Brent crude level, 5d change, 20d change", importance: "high", note: "India imports ~85% of oil. Crude > $90 = current account pressure = INR weakness = FII selling. Crude spike is Nifty's biggest macro enemy." },
+      { name: "RBI Policy Signal", formula: "Repo rate decision, stance change, forward guidance", importance: "high", note: "RBI MPC meets 6 times/year. Dovish surprise = Nifty bullish (especially Bank Nifty). Hawkish surprise = sell. Track OIS rates for market expectations." },
+      { name: "India 10Y G-Sec Yield", formula: "10Y government bond yield level and changes", importance: "medium", note: "Rising bond yields = tightening conditions = equity headwind. Yield > 7.5% historically constrains Nifty PE multiple. Track spread vs US 10Y." },
+      { name: "DXY (Dollar Index)", formula: "DXY level and trend", importance: "medium", note: "Strong dollar = EM weakness. DXY > 105 historically pressures Indian equities. DXY weakening = tailwind for Nifty." },
+      { name: "China/Asia Markets Spillover", formula: "Hang Seng, Shanghai Composite, Nikkei overnight returns", importance: "medium", note: "Asian market correlation. China stimulus or weakness spills into EM sentiment. Morning cues from Asian markets set Nifty opening tone." },
+      { name: "India PMI (Manufacturing & Services)", formula: "Monthly PMI reading and change", importance: "medium", note: "PMI > 50 = expansion. India Services PMI is more relevant than Manufacturing for Nifty. Surprise above/below consensus moves market." },
+      { name: "GST Collection Growth", formula: "Monthly GST revenue YoY growth rate", importance: "medium", note: "India-specific economic activity proxy. GST collection > ₹1.5L crore = strong economy. Published 1st of every month. Leads GDP data." },
+      { name: "Monsoon Progress", formula: "IMD actual vs normal rainfall (cumulative %)", importance: "medium", note: "INDIA SPECIFIC. Good monsoon = rural demand = FMCG/Auto bullish. Deficit monsoon = food inflation = RBI hawkish. Track weekly IMD data June-September." },
+      { name: "Government Capex Spending", formula: "Monthly central government capital expenditure", importance: "low", note: "Government capex drives Infra, Capital Goods, Cement sectors in Nifty. Budget allocation vs actual spending pace matters." },
+      { name: "Gold Price (INR)", formula: "MCX Gold price level and trend", importance: "low", note: "Gold and Nifty inversely correlated during risk-off. Gold imports also affect current account. Gold > ₹60,000/10g = demand destruction point." },
+    ],
+  },
+  {
+    id: "sentiment",
+    icon: "💬",
+    name: "Sentiment & NLP",
+    color: "#be185d",
+    accent: "#f9a8d4",
+    bg: "#fdf2f8",
+    niftyNote: "Indian retail participation is massive. Sentiment from Indian financial media, Telegram groups, and Twitter (FinTwit India) provides contrarian signals. Management commentary analysis on Indian earnings calls is underexploited.",
+    signals: [
+      { name: "India VIX Sentiment Zone", formula: "VIX < 12 = Greed, 12-16 = Neutral, 16-20 = Fear, >20 = Panic", importance: "high", note: "India VIX is the fear gauge. VIX spike > 20 with Nifty down > 2% often marks short-term bottom. VIX crush below 12 = complacency top risk." },
+      { name: "News Sentiment (Indian Media)", formula: "LLM-scored sentiment from ET, Moneycontrol, Livemint, CNBC-TV18", importance: "high", note: "Use Claude/LLM to score Indian financial news headlines. Aggregate daily. Sharp sentiment shifts predict next-day Nifty direction." },
+      { name: "Earnings Call Tone Analysis", formula: "NLP analysis of Nifty 50 company management commentary", importance: "high", note: "Indian management teams give subtle guidance cues. Analyze tone changes QoQ. Especially valuable for HDFC Bank, Reliance, TCS, Infosys calls." },
+      { name: "Retail Sentiment (Zerodha/Groww Proxy)", formula: "New demat account openings, smallcap volume surge", importance: "medium", note: "Retail euphoria indicator. Smallcap volume / Nifty volume ratio at extremes = contrarian signal. Retail piling in = caution." },
+      { name: "Twitter FinTwit India Sentiment", formula: "Sentiment analysis of #Nifty #BankNifty #StockMarket tweets", importance: "medium", note: "Indian FinTwit is very active. Extreme bullish consensus on Twitter is contrarian bearish. Use as a fade signal." },
+      { name: "Telegram/Discord Group Sentiment", formula: "Aggregated sentiment from popular Indian trading groups", importance: "low", note: "Harder to scrape but very informative. Retail trader groups show real-time sentiment. Useful for detecting euphoria/panic." },
+      { name: "SEBI Regulatory Sentiment", formula: "Classify SEBI circulars and regulatory changes", importance: "medium", note: "SEBI actions (margin changes, F&O lot size changes, new regulations) have immediate market impact. NLP to classify regulatory tone." },
+      { name: "RBI Governor Tone", formula: "NLP analysis of RBI press conferences and speeches", importance: "medium", note: "Hawkish vs dovish language analysis. RBI Governor's tone shifts predict policy actions. Track key words: 'accommodative', 'vigilant', 'calibrated'." },
+      { name: "Broker Report Consensus Shift", formula: "Aggregate target price changes from top Indian brokers", importance: "medium", note: "Track Nifty target from Motilal, ICICI Sec, Kotak, CLSA, Morgan Stanley. Consensus target moving up/down in clusters = trend confirmation." },
+      { name: "Google Trends (Market Terms)", formula: "Search interest for 'Nifty crash', 'stock market fall', 'best stocks to buy'", importance: "low", note: "Retail panic/greed proxy. 'Nifty crash' search spike = fear = contrarian buy. 'Best penny stocks' trending = euphoria = caution." },
+      { name: "Budget / Policy Sentiment", formula: "Pre-budget and post-budget NLP scoring", importance: "medium", note: "Union Budget (Feb 1) is the biggest annual event. Market reacts to fiscal deficit, capex allocation, tax changes. Analyze FM speech in real-time." },
+      { name: "Quarterly Results Season Momentum", formula: "% of Nifty 50 companies beating/missing estimates", importance: "high", note: "Track beat/miss ratio as results season progresses. If 70%+ companies beat, Nifty tends to rally through the season. Running tally is predictive." },
+    ],
+  },
+  {
+    id: "microstructure",
+    icon: "🔬",
+    name: "Market Microstructure",
+    color: "#4338ca",
+    accent: "#a5b4fc",
+    bg: "#eef2ff",
+    niftyNote: "NSE's order book is highly transparent. Nifty futures have tight spreads and massive depth. India's unique T+1 settlement and expiry structure create microstructure patterns not found in US markets.",
+    signals: [
+      { name: "Nifty Futures OI Change", formula: "Daily change in Nifty futures open interest + price direction", importance: "high", note: "Price up + OI up = long buildup (bullish). Price down + OI up = short buildup (bearish). Price up + OI down = short covering. Price down + OI down = long unwinding. THE Indian trader's framework." },
+      { name: "Nifty Futures Basis/Premium", formula: "(Futures Price - Spot Price) / Spot Price × 100", importance: "high", note: "Positive basis = contango = bullish. Negative basis (backwardation) = bearish. Basis > 0.5% = very bullish. Basis < -0.1% = very bearish." },
+      { name: "Futures Rollover Data", formula: "% of near-month OI rolled to next month before expiry", importance: "high", note: "High rollover % (>75%) = positions being carried = conviction. Low rollover = positions closing = trend exhaustion. Track cost of carry during rollover." },
+      { name: "Order Flow Imbalance", formula: "Net buy volume - Net sell volume (tick-level)", importance: "high", note: "NSE provides trade-by-trade data. Aggressive buyers (lifting offers) vs passive = net flow. This is the most granular signal available." },
+      { name: "Market Depth Imbalance", formula: "Sum(Top 5 bids) / Sum(Top 5 asks) in Nifty futures", importance: "medium", note: "Bid > Ask consistently = buying pressure building. NSE shows 5-level market depth. Snapshot every minute for a smooth signal." },
+      { name: "Tick Direction Ratio", formula: "Upticks / (Upticks + Downticks) over N minutes", importance: "medium", note: "Simple but effective. Ratio > 0.6 = buying dominated. < 0.4 = selling dominated. Good for intraday timing." },
+      { name: "Block Deal Detection", formula: "Trades > ₹10 crore in single transaction", importance: "medium", note: "Block deals indicate large institutional activity. Cluster of block buys in Nifty heavyweights = institutional accumulation signal." },
+      { name: "Nifty Futures Volume Profile", formula: "Volume distribution across price levels (POC, VAH, VAL)", importance: "medium", note: "Point of Control (highest volume price) acts as magnet. Value Area High/Low as support/resistance. Very effective for intraday Nifty trading." },
+      { name: "Opening Range Breakout", formula: "First 15-min high/low as breakout levels", importance: "medium", note: "Indian market's opening 15 mins set the tone. Break above OR high = bullish for the day. Below OR low = bearish. Classic intraday signal." },
+      { name: "Session-Specific Patterns", formula: "Pre-open (9:00-9:15), Morning (9:15-11:30), Afternoon (1:00-2:30), Close (2:30-3:30)", importance: "medium", note: "Nifty has distinct intraday patterns. Morning session is trend-setting, afternoon is often mean-reverting, last 30 min is institutional closing." },
+      { name: "Delivery Volume %", formula: "Delivery quantity / Total traded quantity for Nifty stocks", importance: "medium", note: "India-specific (T+1 settlement). High delivery % = genuine buying. Low delivery = intraday speculation. Rising delivery % on up days = strong signal." },
+      { name: "Closing Auction Imbalance", formula: "Order imbalance in NSE closing auction (3:00-3:30 PM)", importance: "medium", note: "NSE's closing session has significant institutional flow. Large buy imbalance at close = next day gap-up probability increases." },
+    ],
+  },
+  {
+    id: "volatility",
+    icon: "🌊",
+    name: "Volatility & Regime",
+    color: "#0369a1",
+    accent: "#7dd3fc",
+    bg: "#f0f9ff",
+    niftyNote: "Nifty volatility has clear seasonal patterns (budget season, election years, monsoon) and event-driven spikes (RBI policy, quarterly results). India VIX is mean-reverting and trades in well-defined ranges.",
+    signals: [
+      { name: "India VIX Level & Percentile", formula: "VIX value and its rank in 252-day distribution", importance: "high", note: "VIX < 25th percentile = sell options. VIX > 75th percentile = buy options. Nifty's own VIX is more relevant than using VIX from CBOE." },
+      { name: "Realized vs Implied Volatility Spread", formula: "India VIX - 21d Realized Volatility", importance: "high", note: "When IV > RV by large margin = volatility premium is rich = sell options. When IV < RV = options are cheap = buy. Core options trading signal." },
+      { name: "Intraday Volatility Pattern", formula: "Rolling 5-min standard deviation across session", importance: "medium", note: "Nifty has U-shaped intraday vol: high at open, low at midday, high at close. Deviation from this pattern signals abnormal activity." },
+      { name: "GARCH(1,1) Forecast", formula: "Next-day volatility forecast from GARCH model", importance: "medium", note: "Classic volatility model. Use for position sizing: scale positions inversely with predicted vol. Also compare GARCH forecast vs India VIX." },
+      { name: "Volatility Regime (HMM)", formula: "Hidden Markov Model with 3 states: low/medium/high vol", importance: "medium", note: "Different strategies work in different regimes. Momentum works in medium vol. Mean reversion in low vol. Cash in high vol. Auto-detect regime." },
+      { name: "Event Volatility Calendar", formula: "Pre-event IV spike pattern for known events", importance: "high", note: "Map IV behavior around: RBI MPC (6/yr), Budget (Feb), Elections, Quarterly results, US Fed. IV rises into events and crushes after. Trade the crush." },
+      { name: "VIX-Nifty Correlation Regime", formula: "Rolling correlation between VIX changes and Nifty returns", importance: "medium", note: "Normally inverse (-0.7 to -0.9). When correlation weakens (> -0.5), it signals regime change. Both can fall together in unusual markets." },
+      { name: "Weekly vs Monthly IV Ratio", formula: "At-the-money IV of weekly options / monthly options", importance: "medium", note: "Ratio > 1 = near-term fear spike (backwardation). Ratio < 0.8 = calm near-term, uncertainty building for monthly. Trades the term structure." },
+      { name: "Parkinson Volatility", formula: "Volatility estimated from daily high-low range", importance: "low", note: "More efficient than close-to-close vol. Uses intraday range information. Good for detecting vol compression (Parkinson declining = breakout coming)." },
+      { name: "Correlation Spike Detection", formula: "Average pairwise correlation of Nifty 50 stocks", importance: "medium", note: "When all stocks move together (corr > 0.6), it's a macro-driven market. Stock-picking alpha disappears. Shift to index-level strategies." },
+      { name: "Expiry Week Volatility Crush", formula: "IV change pattern in last 3 days before expiry", importance: "high", note: "INDIA SPECIFIC. Weekly options IV crushes 30-50% in final 2 days. Selling options on Monday afternoon for Tuesday expiry is a known strategy." },
+      { name: "Budget Day IV Pattern", formula: "Historical IV path: 2 weeks before → budget day → 2 weeks after", importance: "medium", note: "IV builds for 2 weeks before budget, spikes on morning of budget, and collapses 30-40% by end of budget day regardless of outcome. Trade the crush." },
+    ],
+  },
+  {
+    id: "seasonal",
+    icon: "📅",
+    name: "Calendar & Seasonal",
+    color: "#65a30d",
+    accent: "#bef264",
+    bg: "#f7fee7",
+    niftyNote: "Indian markets have strong calendar effects due to: festival seasons (Diwali, Muhurat trading), FII fiscal year (April-March), quarterly advance tax dates, derivative expiry cycle, and government spending patterns.",
+    signals: [
+      { name: "Day-of-Week Effect", formula: "Average return by day of week (rolling 1-year)", importance: "medium", note: "Historically Monday is weakest (global risk-off over weekend), Tuesday is expiry day (pinning + gamma). Friday often trends. These rotate — recalculate quarterly." },
+      { name: "Monthly Seasonality", formula: "Average return by month (10-year pattern)", importance: "medium", note: "Nov-Dec strong (Diwali buying, FII year-end allocation). Feb volatile (budget). March weak (advance tax selling). September-October historically weakest." },
+      { name: "Expiry Week Pattern", formula: "Performance in expiry week vs non-expiry weeks", importance: "high", note: "Nifty tends to be range-bound in expiry week due to options pinning. Breakouts happen more in first week of new series. Trade accordingly." },
+      { name: "Advance Tax Date Effect", formula: "Nifty returns around March 15, June 15, Sep 15, Dec 15", importance: "medium", note: "INDIA SPECIFIC. Corporates sell equity to pay advance tax. Creates selling pressure 2-3 days before these dates. Predictable dip." },
+      { name: "Muhurat Trading Signal", formula: "Diwali day performance and subsequent 1-month return", importance: "low", note: "Muhurat trading (Diwali evening session) is almost always positive due to auspicious buying. More importantly, Nov-Dec post-Diwali rally is real." },
+      { name: "FII Fiscal Year Rotation", formula: "FII flow pattern around March-April (new fiscal year)", importance: "medium", note: "Global funds reallocate at fiscal year change. January effect (new calendar year) and April effect (new Indian FY). Watch for fresh allocation flows." },
+      { name: "Quarterly Results Season Pattern", formula: "Nifty behavior during earnings season (Jan, Apr, Jul, Oct)", importance: "medium", note: "IT results kick off season (mid-Jan, mid-Apr, mid-Jul, mid-Oct). Initial reaction to bellwethers sets tone. TCS/Infy results move entire market." },
+      { name: "RBI Policy Date Effect", formula: "Nifty return on MPC announcement days vs base rate", importance: "medium", note: "Market often rallies into RBI policy on dovish expectations. The surprise component matters most. Track OIS rates to gauge expectations." },
+      { name: "Holiday-Adjusted Momentum", formula: "Skip market holidays in lookback calculations", importance: "low", note: "India has ~15 market holidays/year. 3-day weekends affect momentum calculations. Adjust lookback windows to count trading days, not calendar days." },
+      { name: "Election Cycle Effect", formula: "Nifty returns in pre-election vs post-election periods", importance: "medium", note: "Indian state and national elections affect market. Pre-election uncertainty = volatility. Pro-business outcome = rally. Map the election calendar." },
+      { name: "Global Event Calendar Overlay", formula: "US Fed, ECB, BOJ, G20 meeting schedule", importance: "medium", note: "Indian markets react to global events with lag due to timezone. Map all major global events. Position before, not during, these events." },
+      { name: "F&O Ban Period Effect", formula: "Nifty stock entering/exiting F&O ban", importance: "low", note: "SEBI bans F&O trading when OI > 95% of MWPL. Stocks exiting ban often see sharp moves. Track MWPL utilization for Nifty heavyweights." },
+    ],
+  },
+];
+
+const encyclopediaData = [
+  {
+    id: "momentum",
+    icon: "🚀",
+    name: "Momentum & Trend",
+    color: "#dc2626",
+    signals: [
+      "Price Return (1d, 2d, 3d, 5d, 10d, 21d, 42d, 63d, 126d, 252d)",
+      "Volume-Weighted Return (same windows as above)",
+      "Risk-Adjusted Momentum (Return / Volatility, per window)",
+      "Acceleration (Δ momentum — rate of change of returns)",
+      "Momentum Breadth (% of Nifty 50 stocks with positive N-day returns)",
+      "GIFT Nifty Overnight Gap (% gap from previous close)",
+      "GIFT Nifty Gap Direction Persistence (does gap direction predict day's close?)",
+      "US Market Overnight Return (S&P 500, Nasdaq, Dow after India close)",
+      "European Market Overnight (DAX, FTSE close → India next day)",
+      "Asian Market Morning (Nikkei, Hang Seng, Kospi pre-India open)",
+      "Bank Nifty vs Nifty Relative Strength (rolling 5d, 10d, 21d)",
+      "Nifty IT vs Nifty Relative Strength",
+      "Nifty Pharma vs Nifty Relative Strength",
+      "Nifty Auto vs Nifty Relative Strength",
+      "Nifty Metal vs Nifty Relative Strength",
+      "Nifty Realty vs Nifty Relative Strength",
+      "Nifty FMCG vs Nifty Relative Strength",
+      "Nifty Energy vs Nifty Relative Strength",
+      "Nifty PSU Bank vs Nifty Private Bank Relative Strength",
+      "Nifty Midcap 100 vs Nifty 50 Relative Strength",
+      "Nifty Smallcap 250 vs Nifty 50 Relative Strength",
+      "Advance-Decline Line (cumulative A-D of Nifty 50)",
+      "Advance-Decline Ratio (rolling 5d, 10d)",
+      "New Highs - New Lows (within Nifty 200 universe)",
+      "McClellan Oscillator (Nifty breadth momentum)",
+      "McClellan Summation Index (cumulative breadth)",
+      "% Stocks Above 20 DMA in Nifty 50",
+      "% Stocks Above 50 DMA in Nifty 50",
+      "% Stocks Above 200 DMA in Nifty 50",
+      "EMA Crossover Signals (5/13, 9/21, 20/50, 50/200)",
+      "SMA Slope (20, 50, 100, 200 — degrees of tilt)",
+      "MACD Line, Signal, Histogram (12/26/9 standard)",
+      "MACD Divergence (price making new high but MACD isn't)",
+      "Parabolic SAR (trend reversal dots)",
+      "Ichimoku Cloud (Tenkan, Kijun, Senkou A/B, Chikou)",
+      "Ichimoku Cloud Thickness (trend strength proxy)",
+      "Donchian Channel Breakout (20d, 55d)",
+      "Keltner Channel Breakout (20 EMA ± 2 ATR)",
+      "Heikin-Ashi Candle Color Streak (consecutive same-color candles)",
+      "ADX (14-period) Trend Strength",
+      "DI+ / DI- Crossover",
+      "Aroon Oscillator (trend detection)",
+      "Vortex Indicator (VI+ and VI-)",
+      "Supertrend Indicator (7,3 and 10,3 parameters)",
+      "Linear Regression Slope (21d, 63d)",
+      "Linear Regression R-squared (trend quality)",
+      "Price vs 52-Week High (% distance)",
+      "Price vs 52-Week Low (% distance)",
+      "Monthly Expiry Week Momentum (last 5 trading days pattern)",
+      "First Week of New F&O Series Momentum",
+      "Intraday First 15-Min Return (Opening Range direction)",
+      "Intraday First Hour Return (morning session signal)",
+      "Last 30-Min Return (closing session institutional flow)",
+      "Overnight Return (previous close to current open)",
+      "Gap-and-Go vs Gap-and-Fade Classification",
+      "Sector Rotation Speed (rate of rotation between sectors)",
+      "Momentum Factor Crowding (how many participants follow same momentum signals)",
+    ],
+  },
+  {
+    id: "meanrev",
+    icon: "🔄",
+    name: "Mean Reversion",
+    color: "#2563eb",
+    signals: [
+      "RSI (2, 5, 7, 14, 21-period on multiple timeframes)",
+      "Stochastic RSI (smoothed RSI for extreme readings)",
+      "Z-Score of Price vs 10d, 20d, 50d, 100d, 200d SMA",
+      "Z-Score of Price vs VWAP (intraday)",
+      "Bollinger Band %B (20/2σ standard)",
+      "Bollinger Band Width (squeeze detection — low width = breakout coming)",
+      "Bollinger Band Walk (consecutive closes outside band)",
+      "VWAP Distance (% deviation from session VWAP)",
+      "VWAP Bands (1σ, 2σ, 3σ from VWAP)",
+      "Anchored VWAP from Swing High/Low",
+      "Anchored VWAP from Expiry Start",
+      "Max Pain Reversion (distance to weekly max pain)",
+      "Max Pain Reversion (distance to monthly max pain)",
+      "Stochastic Oscillator %K %D (5,3,3 and 14,3,3)",
+      "Williams %R (14-period overbought/oversold)",
+      "CCI - Commodity Channel Index (deviation from statistical mean)",
+      "Detrended Price Oscillator",
+      "Overnight Gap Size vs Historical Percentile",
+      "Gap Fill Probability (conditioned on gap size bucket)",
+      "Intraday Range Used (% of expected daily ATR already used)",
+      "Intraday High-Low Retracement Level",
+      "Put-Call Ratio Extremes (< 0.7 or > 1.3 as contrarian)",
+      "Sector-Neutral Residual Return",
+      "Market-Neutral Residual (Nifty return - Beta × Global return)",
+      "Pairs Spread Z-Score (Nifty vs Bank Nifty)",
+      "Pairs Spread Z-Score (Nifty vs Nifty IT)",
+      "Pairs Spread Z-Score (HDFC Bank vs ICICI Bank)",
+      "Pairs Spread Z-Score (TCS vs Infosys)",
+      "Pairs Spread Z-Score (Reliance vs Nifty)",
+      "Cointegration Residual (Engle-Granger test on stock pairs)",
+      "Johansen Cointegration (multi-asset basket residuals)",
+      "Ornstein-Uhlenbeck Half-Life (speed of mean reversion)",
+      "Fibonacci Retracement Levels (38.2%, 50%, 61.8%)",
+      "Fibonacci Extension Levels (127.2%, 161.8%)",
+      "Pivot Points (Standard, Camarilla, Woodie)",
+      "Weekly Pivot Point Support/Resistance",
+      "Monthly Pivot Point Support/Resistance",
+      "Price vs Psychological Round Numbers (22000, 22500, 23000 etc.)",
+      "Round Number Magnetism (distance to nearest 100-point level)",
+      "Previous Day High/Low as Support/Resistance",
+      "Previous Week High/Low as Support/Resistance",
+      "Previous Month High/Low as Support/Resistance",
+      "Volume Profile POC (Point of Control) Reversion",
+      "Volume Profile Value Area Reversion (VAH/VAL)",
+      "TWAP Reversion (deviation from time-weighted average)",
+      "Relative Volume Anomaly (current vol vs 20d avg at same time of day)",
+      "Consecutive Up/Down Days (reversal probability after 3+, 5+, 7+)",
+      "Intraday VWAP Cross Count (multiple crosses = mean-reverting day)",
+      "Expiry Day Pin Risk Score (probability of pinning near highest OI strike)",
+    ],
+  },
+  {
+    id: "options",
+    icon: "🎯",
+    name: "Options & Derivatives",
+    color: "#7c3aed",
+    signals: [
+      "Total Nifty Call OI (aggregate)",
+      "Total Nifty Put OI (aggregate)",
+      "Nifty PCR by OI (Put OI / Call OI)",
+      "Nifty PCR by Volume (Put Vol / Call Vol)",
+      "PCR Change (daily Δ in PCR)",
+      "OI Distribution Heatmap (OI per strike for calls and puts)",
+      "Max Pain Strike (weekly)",
+      "Max Pain Strike (monthly)",
+      "Max Pain Deviation (Nifty distance from max pain in ATR units)",
+      "Highest Call OI Strike (resistance wall)",
+      "Highest Put OI Strike (support wall)",
+      "Call OI Change per Strike (which strikes are building/unwinding)",
+      "Put OI Change per Strike",
+      "OI Concentration Ratio (top 3 strikes OI / total OI)",
+      "Strike-Level OI Shift Detection (support/resistance walls moving)",
+      "India VIX Level",
+      "India VIX Daily Change %",
+      "India VIX 5-Day Change %",
+      "India VIX Percentile Rank (252-day)",
+      "India VIX vs Nifty Correlation (rolling 21d)",
+      "India VIX Mean Reversion Signal (Z-score of VIX)",
+      "India VIX Term Structure (weekly IV vs monthly IV)",
+      "India VIX Term Structure Slope Change",
+      "ATM Implied Volatility (weekly options)",
+      "ATM Implied Volatility (monthly options)",
+      "25-Delta Put IV (skew reference)",
+      "25-Delta Call IV (skew reference)",
+      "IV Skew (25D Put IV - 25D Call IV)",
+      "IV Skew Change (daily)",
+      "IV Smile Curvature (butterfly spread implied)",
+      "Realized Volatility (5d, 10d, 21d, 63d)",
+      "IV - RV Spread (Variance Risk Premium)",
+      "IV - RV Spread Percentile",
+      "Gamma Exposure (GEX) Net across all strikes",
+      "GEX Flip Point (price level where GEX switches sign)",
+      "Dealer Delta Exposure (DEX)",
+      "Charm (Delta decay — how delta changes with time)",
+      "Vanna Exposure (how delta changes with IV)",
+      "OI Buildup Classification per Strike (long/short call/put)",
+      "OI Unwinding Detection (Price + OI combined)",
+      "Long Buildup (Price ↑ + OI ↑) Count of Strikes",
+      "Short Buildup (Price ↓ + OI ↑) Count of Strikes",
+      "Short Covering (Price ↑ + OI ↓) Count of Strikes",
+      "Long Unwinding (Price ↓ + OI ↓) Count of Strikes",
+      "Nifty Futures Premium (Basis) — Near Month",
+      "Nifty Futures Premium (Basis) — Next Month",
+      "Basis Spread (Next Month - Near Month)",
+      "Futures Cost of Carry (annualized)",
+      "Futures Rollover Percentage (in expiry week)",
+      "Rollover Cost (premium paid to roll)",
+      "Nifty Futures OI Total",
+      "Nifty Futures OI Change (daily)",
+      "Nifty Mini Futures OI (retail participation proxy)",
+      "Bank Nifty Options OI Distribution",
+      "Bank Nifty PCR",
+      "Bank Nifty Max Pain",
+      "Bank Nifty GEX",
+      "Bank Nifty vs Nifty IV Spread",
+      "Weekly Options Time Decay Rate (Theta per day by DTE)",
+      "Pin Risk Score (probability of expiry near max OI strike)",
+      "Straddle Price as % of Nifty (expected move implied by market)",
+      "Expected Move Range (±1σ from ATM straddle price)",
+      "Iron Condor Implied Range (wings of max OI)",
+      "Options Volume Surge Detection (unusual volume at specific strikes)",
+      "Large OI Build Detection (single-strike OI jump > 2σ from normal)",
+      "Synthetic Futures Position (Call - Put at same strike) Net OI",
+    ],
+  },
+  {
+    id: "flow",
+    icon: "💰",
+    name: "FII / DII / Participant Flows",
+    color: "#0f766e",
+    signals: [
+      "FII Cash Segment Net Buy/Sell (daily)",
+      "FII Cash Segment Cumulative (5d, 10d, 21d, 63d rolling)",
+      "FII F&O Index Futures Net Long/Short",
+      "FII F&O Index Options Net Long/Short",
+      "FII F&O Stock Futures Net Long/Short",
+      "FII F&O Stock Options Net Long/Short",
+      "FII Long-Short Ratio in Index Futures",
+      "FII Long-Short Ratio Change (daily)",
+      "FII Total F&O Position Value",
+      "DII Cash Segment Net Buy/Sell (daily)",
+      "DII Cash Segment Cumulative (5d, 10d, 21d, 63d rolling)",
+      "FII-DII Divergence (FII net - DII net)",
+      "FII-DII Divergence Cumulative (rolling 10d)",
+      "Proprietary Traders Net Position (Index Futures)",
+      "Client (Retail) Net Position (Index Futures)",
+      "Pro vs Client Divergence",
+      "SIP Monthly Inflow (AMFI data)",
+      "SIP Inflow Trend (3-month rolling average)",
+      "Equity Mutual Fund Net Inflow/Outflow (monthly)",
+      "Equity MF Gross Purchases vs Sales",
+      "Mutual Fund Cash as % of AUM",
+      "NFO (New Fund Offer) Pipeline Value",
+      "ETF Net Creation/Redemption (Nifty 50 ETFs)",
+      "ETF Net Creation/Redemption (Bank Nifty ETFs)",
+      "ETF Net Creation/Redemption (Gold ETFs)",
+      "FII Sector-Level Flow (from NSDL/CDSL data)",
+      "FII Buying in Top 10 Nifty Stocks (concentration)",
+      "DII Buying in Top 10 Nifty Stocks",
+      "IPO Subscription Ratios (QIB, NII, Retail)",
+      "IPO Pipeline Capital Drain Estimate",
+      "FPO / OFS Supply Pressure",
+      "Promoter Pledge Changes (Nifty 50 aggregate)",
+      "Promoter Stake Changes (quarterly from shareholding patterns)",
+      "Institutional Holding Change (quarterly)",
+      "Retail Holding Change (quarterly)",
+      "EPFO Equity Allocation Changes",
+      "Insurance Company Equity Purchases",
+      "NPS Fund Equity Flow Estimates",
+      "FII Country Allocation to India (% of EM allocation)",
+      "EM Fund Flows (EPFR/IIF data — India share)",
+      "India-Dedicated Fund Flows vs EM Broad Fund Flows",
+      "ADR/GDR Premium or Discount (for dual-listed Nifty stocks)",
+      "P-Note Outstanding Value (participatory notes)",
+      "Block Deal Value (daily aggregate)",
+      "Bulk Deal Value (daily aggregate)",
+      "FII Dollar-Adjusted Flow (FII INR flow / USD-INR move)",
+      "FII Flow vs USD/INR Correlation (rolling)",
+      "FII Flow Momentum (acceleration of buying/selling)",
+      "Smart Money Index (last hour institutional flow pattern)",
+    ],
+  },
+  {
+    id: "macro",
+    icon: "🌐",
+    name: "India Macro & Global",
+    color: "#ea580c",
+    signals: [
+      "USD/INR Spot Rate",
+      "USD/INR Daily Change %",
+      "USD/INR 20d Trend Direction",
+      "USD/INR 1-Month Forward Premium",
+      "USD/INR 3-Month Forward Premium",
+      "USD/INR Implied Volatility",
+      "RBI Intervention Estimate (from reserve changes)",
+      "India Forex Reserves Weekly Change",
+      "Brent Crude Oil Price",
+      "Brent Crude 5d, 20d Change %",
+      "Crude Oil Inventory (EIA weekly data)",
+      "Natural Gas Price (India LNG import cost proxy)",
+      "Gold Price (MCX INR)",
+      "Gold Price (International USD)",
+      "Silver Price (MCX)",
+      "Copper Price (industrial demand proxy)",
+      "Steel Price (India HRC)",
+      "Aluminum Price (LME)",
+      "US 10-Year Treasury Yield",
+      "US 10Y Yield Daily Change",
+      "US 2Y-10Y Spread (yield curve slope)",
+      "US 10Y Real Yield (TIPS)",
+      "India 10Y G-Sec Yield",
+      "India 10Y Yield Change",
+      "India 2Y-10Y Spread",
+      "India-US 10Y Spread (carry trade signal)",
+      "India OIS Rates (1Y, 2Y, 5Y — policy expectation)",
+      "RBI Repo Rate (current + change history)",
+      "RBI Stance (Accommodative / Neutral / Tightening)",
+      "RBI Liquidity Injection/Absorption (daily)",
+      "WACR (Weighted Average Call Rate — interbank liquidity)",
+      "India CPI Inflation (monthly)",
+      "India Core CPI (ex food and fuel)",
+      "India WPI Inflation",
+      "India GDP Growth (quarterly)",
+      "India IIP (Industrial Production Index)",
+      "India PMI Manufacturing (monthly)",
+      "India PMI Services (monthly)",
+      "India PMI Composite",
+      "GST Collection (monthly total)",
+      "GST Collection YoY Growth %",
+      "E-way Bills Generated (monthly — freight proxy)",
+      "Electricity Generation Growth (real-time economic proxy)",
+      "Railway Freight Volume (economic activity proxy)",
+      "Auto Sales Monthly (PV, 2W, CV from SIAM/FADA)",
+      "Cement Dispatches (monthly)",
+      "India Trade Balance (monthly export - import)",
+      "India Current Account Balance (quarterly)",
+      "India Fiscal Deficit (cumulative monthly)",
+      "Government Capital Expenditure (monthly)",
+      "Government Revenue Expenditure (monthly)",
+      "Direct Tax Collections (advance tax dates)",
+      "Monsoon Progress (IMD actual vs normal %)",
+      "Monsoon Regional Distribution (spatial pattern)",
+      "Reservoir Storage Levels (as % of capacity)",
+      "Kharif/Rabi Sowing Progress",
+      "Food Inflation (vegetable, pulses, cereals breakdown)",
+      "DXY (US Dollar Index)",
+      "DXY Trend (20d direction)",
+      "Euro/USD Rate",
+      "GBP/USD Rate",
+      "USD/JPY Rate (risk sentiment proxy)",
+      "USD/CNY Rate (China devaluation signal)",
+      "EM Currency Index (JP Morgan EMCI)",
+      "S&P 500 Level and Trend",
+      "Nasdaq 100 Level and Trend",
+      "Dow Jones Level and Trend",
+      "VIX (CBOE) Level",
+      "VIX-India VIX Spread",
+      "Hang Seng Level and Trend",
+      "Shanghai Composite Level",
+      "Nikkei 225 Level and Trend",
+      "MSCI EM Index Level and Trend",
+      "MSCI India vs MSCI EM Relative Performance",
+      "Global Credit Spreads (US IG and HY OAS)",
+      "US High Yield Spread Change",
+      "TED Spread (interbank stress)",
+      "LIBOR-OIS Spread (funding stress)",
+      "Baltic Dry Index (global trade proxy)",
+      "Global PMI Composite",
+      "US Nonfarm Payrolls (monthly)",
+      "US CPI (monthly)",
+      "US Fed Funds Rate",
+      "US Fed Dot Plot Expectations",
+      "ECB Rate Decision",
+      "BOJ Policy Signal (yield curve control)",
+      "China PMI (official + Caixin)",
+      "China Credit Impulse",
+      "China Property Market Indicators",
+      "Geopolitical Risk Index (Caldara & Iacoviello)",
+      "Crude-INR Combined Stress Index",
+      "India Sovereign CDS Spread",
+    ],
+  },
+  {
+    id: "sentiment",
+    icon: "💬",
+    name: "Sentiment & NLP",
+    color: "#be185d",
+    signals: [
+      "India VIX Sentiment Zone (Greed/Neutral/Fear/Panic)",
+      "India VIX Rate of Change (speed of fear/greed shift)",
+      "News Headline Sentiment (Economic Times)",
+      "News Headline Sentiment (Moneycontrol)",
+      "News Headline Sentiment (Livemint)",
+      "News Headline Sentiment (Business Standard)",
+      "News Headline Sentiment (CNBC-TV18)",
+      "News Headline Sentiment (Reuters India)",
+      "News Headline Sentiment (Bloomberg Quint)",
+      "Aggregate News Sentiment Score (all sources combined)",
+      "News Sentiment Change (today vs 5d average)",
+      "News Volume Spike Detection (abnormal article count)",
+      "Earnings Call Tone — Nifty 50 Companies (QoQ change)",
+      "Earnings Call Key Phrase Detection (guidance, cautious, strong)",
+      "Management Confidence Score (from earnings transcripts)",
+      "Earnings Surprise (Actual EPS - Consensus)",
+      "Earnings Revision Momentum (analyst estimate changes)",
+      "Consensus Target Price Change (Nifty 50 aggregate)",
+      "Analyst Upgrade/Downgrade Ratio (rolling 30d)",
+      "Broker Report Sentiment (top 10 Indian brokers)",
+      "Twitter #Nifty Sentiment Score",
+      "Twitter #BankNifty Sentiment Score",
+      "Twitter #StockMarket India Volume + Sentiment",
+      "Reddit r/IndianStreetBets Sentiment",
+      "Reddit r/IndianStockMarket Sentiment",
+      "StockTwits India Sentiment (if available)",
+      "Telegram Trading Group Sentiment (aggregated)",
+      "YouTube Finance India Sentiment (title/thumbnail NLP)",
+      "Google Trends: 'Nifty crash'",
+      "Google Trends: 'stock market fall India'",
+      "Google Trends: 'best stocks to buy'",
+      "Google Trends: 'mutual fund SIP'",
+      "Google Trends: 'demat account open'",
+      "Google Trends: 'Zerodha' / 'Groww' (retail activity proxy)",
+      "Google Trends: 'Nifty prediction tomorrow'",
+      "New Demat Account Openings (monthly, from CDSL/NSDL)",
+      "Demat Account Growth Rate (retail participation trend)",
+      "Retail Trading Volume % (retail vs institutional)",
+      "Smallcap Volume / Nifty Volume Ratio (speculation index)",
+      "Penny Stock Volume Surge (retail euphoria proxy)",
+      "SEBI Circular Sentiment (classify regulatory changes)",
+      "SEBI Margin Rule Changes (tightening vs relaxing)",
+      "RBI Governor Speech Tone Analysis",
+      "RBI MPC Minutes Sentiment (hawkish/dovish word count)",
+      "Finance Minister Speech Sentiment",
+      "Budget Speech Sentiment Analysis (real-time)",
+      "Corporate Announcement Sentiment (NSE corporate filings)",
+      "Insider Trading Pattern (Form C filings — cluster buys/sells)",
+      "Promoter Buying/Selling Activity (Nifty 50 companies)",
+      "Fund Manager Survey Sentiment (if available)",
+      "Quarterly Results Beat/Miss Ratio (running tally during season)",
+      "Guidance Tone Change (QoQ from management commentary)",
+      "Credit Rating Changes (upgrades vs downgrades aggregate)",
+      "IPO Subscription Enthusiasm (Day 1 subscription multiples)",
+    ],
+  },
+  {
+    id: "micro",
+    icon: "🔬",
+    name: "Market Microstructure",
+    color: "#4338ca",
+    signals: [
+      "Nifty Futures OI Total",
+      "Nifty Futures OI Daily Change",
+      "Nifty Futures OI + Price Direction Classification",
+      "Nifty Futures Premium/Discount (Basis) Real-Time",
+      "Nifty Futures Basis Intraday Trend",
+      "Nifty Futures Basis Percentile (vs 30d history)",
+      "Nifty Futures Spread (Near vs Next Month)",
+      "Futures Rollover % (in expiry week)",
+      "Futures Rollover Cost of Carry",
+      "Order Flow Imbalance (aggressive buy vs sell volume)",
+      "Cumulative Delta (running OFI through the session)",
+      "Delta Divergence (price making new high but delta isn't)",
+      "Trade-by-Trade Aggressor Side Classification",
+      "Market Depth Imbalance (bid depth vs ask depth, top 5 levels)",
+      "Market Depth Imbalance Change Rate",
+      "Bid-Ask Spread (Nifty Futures average)",
+      "Bid-Ask Spread Widening Signal (stress indicator)",
+      "Book Pressure (bid queue vs ask queue at top of book)",
+      "Order Cancellation Rate (spoofing/manipulation proxy)",
+      "Tick Direction Ratio (uptick/downtick % over N minutes)",
+      "Volume Clock (trades per minute vs session average)",
+      "Volume Surge Detection (3σ+ volume spike in 1-min bars)",
+      "Block Deal Detection (trades > ₹10 crore)",
+      "Bulk Deal Detection (trades > 0.5% of equity)",
+      "Block Deal Direction (net buy vs sell value)",
+      "VWAP (Session — rolling from 9:15 AM)",
+      "VWAP Deviation (% distance from session VWAP)",
+      "TWAP (Time-Weighted Average Price)",
+      "Volume Profile (POC — Point of Control)",
+      "Volume Profile (Value Area High — VAH)",
+      "Volume Profile (Value Area Low — VAL)",
+      "Volume Profile (HVN — High Volume Nodes as support/resistance)",
+      "Volume Profile (LVN — Low Volume Nodes as breakout zones)",
+      "Multi-Day Volume Profile (composite over 5, 10, 20 sessions)",
+      "Opening Range (first 5-min, 15-min, 30-min high/low)",
+      "Opening Range Breakout Direction",
+      "Opening Range Width vs ATR (narrow = breakout day likely)",
+      "Initial Balance (first hour high/low)",
+      "Initial Balance Extension (did price break first hour range?)",
+      "Market Profile TPO (Time Price Opportunity) count",
+      "Market Profile Shape (Normal, P-shape, b-shape, Double Dist)",
+      "Session-Specific Volume Pattern (morning, midday, afternoon, close)",
+      "Pre-Open Session Order Imbalance (9:00-9:08 AM)",
+      "Pre-Open Indicative Price vs Previous Close",
+      "Closing Auction Imbalance (3:00-3:30 PM)",
+      "Delivery Volume % (cash segment)",
+      "Delivery Volume % Change (trending up/down)",
+      "Short Delivery Data (T+2 settlement failure proxy)",
+      "Trade Size Distribution (% large vs small trades — institutional footprint)",
+      "Intraday Volatility Pattern (U-shape, J-shape, or flat)",
+      "Intraday Correlation Pattern (sector correlations change through the day)",
+      "Speed of Move (price change per unit time — urgency metric)",
+      "Price Rejection (long wicks at support/resistance levels)",
+      "Candle Pattern Recognition (engulfing, doji, hammer, shooting star, etc.)",
+      "Multi-Candle Patterns (morning star, evening star, three white soldiers, etc.)",
+      "Gap Classification (breakaway, runaway, exhaustion gap)",
+    ],
+  },
+  {
+    id: "volatility",
+    icon: "🌊",
+    name: "Volatility & Regime",
+    color: "#0369a1",
+    signals: [
+      "India VIX Absolute Level",
+      "India VIX Percentile Rank (60d, 126d, 252d lookback)",
+      "India VIX Z-Score (mean reversion signal)",
+      "India VIX Rate of Change (1d, 5d, 10d)",
+      "India VIX Intraday Range (VIX high - VIX low)",
+      "Realized Volatility (5d, 10d, 21d, 63d, 252d — close-to-close)",
+      "Parkinson Volatility (High-Low based, same windows)",
+      "Garman-Klass Volatility (OHLC based, more efficient)",
+      "Yang-Zhang Volatility (accounts for overnight gaps)",
+      "IV - RV Spread (Variance Risk Premium)",
+      "IV - RV Spread Percentile",
+      "IV - RV Spread by Moneyness (ATM, 5% OTM, 10% OTM)",
+      "GARCH(1,1) Conditional Volatility Forecast",
+      "EGARCH Volatility (captures leverage effect — vol rises more on down moves)",
+      "GJR-GARCH Asymmetric Volatility",
+      "Volatility Cone (current IV percentile vs historical at same DTE)",
+      "Volatility Term Structure (weekly, monthly, quarterly IV)",
+      "Vol Term Structure Slope",
+      "Vol Term Structure Curvature",
+      "Vol Term Structure Regime (contango, backwardation, flat)",
+      "IV Skew Level (25D Put - 25D Call)",
+      "IV Skew Change Rate",
+      "IV Skew vs Realized Skew Gap",
+      "IV Smile Curvature (butterfly spread)",
+      "Correlation Regime — Average Pairwise (Nifty 50 stocks, 21d, 63d)",
+      "Correlation Dispersion (std dev of pairwise correlations)",
+      "Nifty-Bank Nifty Correlation (rolling)",
+      "Nifty-S&P 500 Correlation (rolling)",
+      "Nifty-USD/INR Correlation (rolling)",
+      "Nifty-Crude Oil Correlation (rolling)",
+      "Nifty-Gold Correlation (rolling)",
+      "Hidden Markov Model Regime State (2-state, 3-state)",
+      "HMM Regime Transition Probability",
+      "Volatility Regime (Low/Medium/High) Classification",
+      "Regime Duration (how long in current regime)",
+      "CUSUM Change Point Detection (structural break in vol)",
+      "Return Distribution Skewness (21d, 63d rolling)",
+      "Return Distribution Kurtosis (fat tail measure)",
+      "Jarque-Bera Normality Test (departure from normal)",
+      "Maximum Drawdown (rolling 21d, 63d, 252d)",
+      "Drawdown Duration (days since last equity high)",
+      "Conditional VaR (Expected Shortfall at 95%, 99%)",
+      "Historical VaR (95%, 99% at portfolio level)",
+      "Cornish-Fisher VaR (adjusted for skew and kurtosis)",
+      "ATR (Average True Range) — 5d, 14d, 21d",
+      "ATR Percentile Rank (is current ATR high or low?)",
+      "ATR Ratio (5d ATR / 21d ATR — vol expansion/contraction)",
+      "Bollinger Band Width (squeeze detection)",
+      "Keltner Channel Width",
+      "BB Width inside Keltner = TTM Squeeze Signal",
+      "Range Contraction Days (count of narrow-range days)",
+      "Intraday Vol Ratio (first hour vol / full day vol — deviation from normal)",
+      "Event Vol Premium (IV increase ahead of known events)",
+      "Post-Event Vol Crush Magnitude",
+      "Cross-Sectional Vol (dispersion of Nifty 50 stock returns)",
+      "Downside Vol vs Upside Vol Ratio (asymmetry of moves)",
+    ],
+  },
+  {
+    id: "seasonal",
+    icon: "📅",
+    name: "Calendar, Seasonal & Structural",
+    color: "#65a30d",
+    signals: [
+      "Day-of-Week Effect (Mon, Tue, Wed, Thu, Fri average return)",
+      "Intraday Hour-of-Day Pattern (9 AM, 10 AM, ... 3 PM)",
+      "Monthly Seasonality (Jan, Feb, ... Dec historical returns)",
+      "Sell-in-May Effect (May-Oct vs Nov-Apr returns)",
+      "Diwali Rally (Nov-Dec pattern)",
+      "Budget Month Volatility (February pattern)",
+      "March Advance Tax Selling Effect",
+      "June Advance Tax Selling Effect",
+      "September Advance Tax Selling Effect",
+      "December Advance Tax Selling Effect",
+      "January Effect (new CY allocation)",
+      "April Effect (new Indian FY allocation)",
+      "Muhurat Trading Day Return",
+      "Republic Day / Independence Day Effect",
+      "Election Year Cycle (pre/post election patterns)",
+      "State Election Calendar Effect",
+      "US Presidential Election Year Effect on India",
+      "Quarter-End Window Dressing (last 3 days of Mar, Jun, Sep, Dec)",
+      "Month-End Rebalancing Flow",
+      "Monthly Expiry Week Pattern (Nifty return in expiry vs non-expiry week)",
+      "Weekly Expiry Day Pattern (Tuesday returns)",
+      "First Day of New F&O Series Pattern",
+      "Rollover Week Pattern",
+      "Pre-RBI MPC Day Pattern",
+      "Post-RBI MPC Day Pattern",
+      "Pre-US Fed Day Pattern (Indian market)",
+      "Post-US Fed Day Pattern",
+      "Quarterly Results Season Start Pattern (TCS/Infy week)",
+      "Holiday-Adjacent Trading Pattern (before long weekends)",
+      "Consecutive Holiday Cluster Effect",
+      "T+1 Settlement Structural Effects",
+      "F&O Lot Size Change Impact",
+      "F&O Ban Period Entry/Exit Effects",
+      "MWPL (Market Wide Position Limit) Utilization",
+      "Index Rebalancing Effect (Nifty 50 add/remove)",
+      "MSCI Rebalancing Effect (India weight change)",
+      "FTSE Rebalancing Effect",
+      "Nifty 50 Rebalancing Announcement → Effective Date Pattern",
+      "Dividend Season Effect (Q4 results → dividend declarations)",
+      "Ex-Dividend Date Effect (Nifty heavyweights)",
+      "Record Date Cluster Effect",
+      "Monsoon Season Pattern (Jun-Sep)",
+      "Pre-Monsoon Uncertainty (May-Jun)",
+      "Post-Monsoon Harvest Effect (Oct-Nov)",
+      "Wedding Season Demand Effect (Oct-Dec gold/consumption)",
+      "Government Fiscal Year Spending Pattern (heavy H2)",
+      "Capex Cycle Phase (early/mid/late cycle indicator)",
+      "Credit Cycle Phase (expansion/peak/contraction/trough)",
+      "Lunar Cycle Effect (full/new moon — documented in research)",
+      "Options Expiry Cycle (weekly decay pattern Fri→Tue)",
+    ],
+  },
+  {
+    id: "fundamental",
+    icon: "📊",
+    name: "Fundamental & Valuation",
+    color: "#9333ea",
+    signals: [
+      "Nifty 50 Trailing PE Ratio",
+      "Nifty 50 Forward PE Ratio",
+      "Nifty PE Percentile (10-year, 20-year)",
+      "Nifty PE vs Historical Average Deviation",
+      "Nifty 50 PB Ratio",
+      "Nifty PB Percentile",
+      "Nifty 50 Dividend Yield",
+      "Nifty Dividend Yield Percentile",
+      "Nifty 50 Earnings Yield (1/PE) vs 10Y G-Sec Yield",
+      "Nifty Earnings Yield - Bond Yield Spread (equity risk premium proxy)",
+      "Nifty 50 EPS Growth (trailing 12m, YoY)",
+      "Nifty 50 Forward EPS Growth Estimate",
+      "Earnings Estimate Revisions (Nifty 50 aggregate, 30d change)",
+      "Earnings Beat/Miss Ratio (during results season)",
+      "Revenue Surprise (Nifty 50 aggregate)",
+      "Margin Expansion/Contraction Trend (Nifty 50 aggregate EBITDA margin)",
+      "ROE Change (Nifty 50 aggregate, QoQ)",
+      "ROIC Change (Nifty 50 aggregate)",
+      "Debt/Equity Ratio Trend (Nifty 50 aggregate)",
+      "Interest Coverage Ratio Trend",
+      "Free Cash Flow Yield (Nifty 50 aggregate)",
+      "FCF Growth Rate",
+      "Capex/Depreciation Ratio (investment cycle indicator)",
+      "Promoter Holding Change (Nifty 50 aggregate, quarterly)",
+      "Institutional Holding Change (FII + DII combined, quarterly)",
+      "Nifty 50 Market Cap / GDP (Buffett Indicator for India)",
+      "Market Cap / GDP Percentile",
+      "India GDP Growth Rate vs Nifty Return Correlation",
+      "Credit Growth (bank credit to commercial sector, monthly)",
+      "Deposit Growth Rate",
+      "Credit-Deposit Ratio Trend",
+      "NPA/GNPA Ratio Trend (banking sector health)",
+      "Provision Coverage Ratio Trend",
+      "Insurance Penetration Growth",
+      "Telecom Subscriber Growth",
+      "UPI Transaction Volume Growth (digital economy proxy)",
+      "Real Estate Registration Data (major cities)",
+      "Steel/Cement Consumption Growth (infra proxy)",
+    ],
+  },
+  {
+    id: "alternative",
+    icon: "🛰️",
+    name: "Alternative & Exotic",
+    color: "#b45309",
+    signals: [
+      "Satellite Imagery — Port Activity (import/export proxy)",
+      "Satellite Imagery — Parking Lot Occupancy (retail/industrial activity)",
+      "Satellite Imagery — Night Light Intensity (economic activity proxy)",
+      "Satellite Imagery — Crop Health (NDVI for monsoon impact)",
+      "AIS Ship Tracking (oil tanker routes to Indian ports)",
+      "Toll Collection Data (NHAI — freight movement proxy)",
+      "Electricity Consumption Real-Time (grid demand as industrial proxy)",
+      "UPI Transaction Data (real-time consumer spending proxy)",
+      "Credit Card Spending Trends (from RBI aggregate data)",
+      "Fuel Sales Volume (petroleum ministry data)",
+      "Air Traffic Data (DGCA — passenger volume, cargo)",
+      "Railway Ticket Booking Data (IRCTC — travel demand proxy)",
+      "Hotel Occupancy Rates (hospitality sector proxy)",
+      "App Download Rankings (fintech/e-commerce proxy)",
+      "Zomato/Swiggy Order Volume Proxy (food delivery economy)",
+      "Job Portal Listing Growth (Naukri, LinkedIn India — employment proxy)",
+      "Glassdoor/AmbitionBox Layoff Signals (company health proxy)",
+      "EPFO Net Subscriber Addition (formal employment proxy)",
+      "Patent Filing Rate (innovation cycle proxy)",
+      "Startup Funding Data (venture capital flow to India)",
+      "Web Traffic to Indian E-commerce (SimilarWeb/Alexa type data)",
+      "Mall Footfall Data (consumption proxy, metro cities)",
+      "Pollution Levels (factory activity proxy — industrial areas)",
+      "Social Media Ad Spending (Meta/Google India — corporate confidence proxy)",
+      "Power Plant Utilization Factor (PLF — industrial demand)",
+      "Shipping Container Rates (India routes)",
+      "FASTag Transaction Volume (real-time road freight proxy)",
+      "Digital Lending Volumes (fintech disbursement data)",
+      "Gold Import Volume (monthly, from DGFT)",
+      "Crypto Volume on Indian Exchanges (risk appetite proxy)",
+      "Insurance Premium Growth (sector health + economic confidence)",
+      "Tractor Sales (rural economy proxy)",
+      "Two-Wheeler Sales (urban mobility + rural proxy)",
+      "Cement Price Index (construction demand proxy)",
+    ],
+  },
+];
+
+const riskData = [
+  {
+    id: "framework",
+    icon: "🏗️",
+    name: "The Conversion Framework",
+    color: "#7c3aed",
+    accent: "#7c3aed",
+    bg: "#f5f3ff",
+    subtitle: "How alpha signals become risk controls",
+    intro: "Every alpha signal has a DUAL purpose: it generates trade ideas AND manages risk. Here's the mental model for converting any signal into a risk control.",
+    blocks: [
+      {
+        title: "Signal → Position Sizing",
+        tag: "PRIMARY USE",
+        tagColor: "#dc2626",
+        content: "High-confidence signals = larger positions. Low confidence = smaller. This is the most direct conversion.",
+        example: "FII buying ₹2000cr + India VIX falling + PCR > 1.2 = HIGH conviction long → size at 1.5x base. Only FII buying, VIX flat = MEDIUM → size at 1x. FII buying but VIX spiking = MIXED → size at 0.5x.",
+      },
+      {
+        title: "Signal → Stop Loss Placement",
+        tag: "DEFENSE",
+        tagColor: "#ea580c",
+        content: "Use alpha signals to set INTELLIGENT stops, not arbitrary percentage stops.",
+        example: "Put OI wall at 22,000 → stop below 22,000 (institutional support). Futures basis turns negative → tighten stop. VIX spikes above 20 → widen stop (avoid noise shakeout).",
+      },
+      {
+        title: "Signal → Exposure Limits",
+        tag: "REGIME CONTROL",
+        tagColor: "#2563eb",
+        content: "Regime signals control TOTAL portfolio exposure, not individual trades.",
+        example: "India VIX < 14 → allow full exposure (100%). VIX 14-18 → reduce to 75%. VIX 18-25 → reduce to 50%. VIX > 25 → reduce to 25% or flat. This alone prevents most blowups.",
+      },
+      {
+        title: "Signal → Hedge Triggers",
+        tag: "PROTECTION",
+        tagColor: "#0f766e",
+        content: "Certain signal combinations trigger automatic hedging, not just position reduction.",
+        example: "FII selling + VIX rising + Credit spreads widening → buy Nifty puts at 3% OTM. Cost: 0.3% of portfolio. Insurance against tail risk. Don't wait for the crash to hedge.",
+      },
+    ],
+  },
+  {
+    id: "position",
+    icon: "📏",
+    name: "Position Sizing Engine",
+    color: "#dc2626",
+    accent: "#fca5a5",
+    bg: "#fef2f2",
+    subtitle: "How much to bet on each trade",
+    intro: "Position sizing is the single most important risk decision. The wrong size on the right trade still loses money. Here's how to convert your Nifty signals into precise position sizes.",
+    blocks: [
+      {
+        title: "Base Position Size Formula",
+        tag: "CORE",
+        tagColor: "#dc2626",
+        content: "Start with a risk-per-trade budget, then let signals adjust it up or down.",
+        example: "Base Risk = 1% of capital per trade\nPosition Size = (Capital × Risk%) / (Entry - Stop Loss)\n\nExample: ₹50L capital, 1% risk = ₹50,000 risk budget\nNifty entry: 22,500, Stop: 22,350 (150 points)\nLot size: 65 (Nifty lot)\nMax lots = ₹50,000 / (150 × 65) = 5.1 → 5 lots\n\nThis is your BASE. Signals adjust from here.",
+      },
+      {
+        title: "Volatility-Adjusted Sizing (ATR Method)",
+        tag: "CORE",
+        tagColor: "#dc2626",
+        content: "Scale position size inversely with volatility. When Nifty is volatile, trade smaller.",
+        example: "Position Multiplier = Median ATR(14) / Current ATR(14)\n\nIf median Nifty ATR = 200 pts, current ATR = 300 pts:\nMultiplier = 200/300 = 0.67 → reduce size by 33%\n\nIf current ATR = 120 pts (low vol):\nMultiplier = 200/120 = 1.67 → can increase size by 67%\n\nThis automatically sizes you down before big moves.",
+      },
+      {
+        title: "Signal Confidence Multiplier",
+        tag: "ALPHA INTEGRATION",
+        tagColor: "#7c3aed",
+        content: "Stack your alpha signals into a composite confidence score that scales position size.",
+        example: "Each signal votes: +1 (bullish), 0 (neutral), -1 (bearish)\n\nFII Flow: +1 (buying > ₹1000cr)\nIndia VIX: +1 (falling, < 14)\nPCR: +1 (> 1.2, contrarian bullish)\nFutures Basis: +1 (positive, contango)\nMax Pain: 0 (price near max pain)\nUS 10Y Yield: -1 (rising sharply)\n\nNet Score: +3 out of ±6\nConfidence = 3/6 = 0.5 → MEDIUM\n\nSize Multiplier: 0.5-0.7x = cautious\n0.7-0.85x = moderate | 0.85-1.0x = base\n1.0-1.3x = confident | 1.3-1.5x = high conviction\n\nNEVER exceed 1.5x base. Ever.",
+      },
+      {
+        title: "Expiry-Adjusted Sizing",
+        tag: "NIFTY SPECIFIC",
+        tagColor: "#0f766e",
+        content: "Reduce size as expiry approaches due to gamma risk and pinning effects.",
+        example: "Days to weekly expiry sizing:\nFriday-Monday morning: 100% base size\nMonday afternoon: 75% base (gamma building)\nTuesday (expiry day): 50% base (max gamma risk)\n\nDays to monthly expiry:\n>5 days: 100% | 3-5 days: 85%\n1-2 days: 60% | Expiry day: 40%\n\nOptions positions: never hold short options into last 2 hours of expiry without hedges.",
+      },
+      {
+        title: "Correlation-Based Portfolio Sizing",
+        tag: "PORTFOLIO LEVEL",
+        tagColor: "#2563eb",
+        content: "If you have multiple positions, adjust total size based on how correlated they are.",
+        example: "If holding: Long Nifty + Long Bank Nifty + Long HDFC Bank\nCorrelation: ~0.85-0.95 between all three\nEffective positions: ~1.2 (not 3!)\n\nRule: Σ(position_risk × sqrt(correlation)) ≤ Max portfolio risk\n\nDiversified portfolio (Nifty long + Gold long + USD/INR short):\nCorrelation: ~0.1-0.3\nEffective positions: ~2.5 → more room to size each trade\n\nDon't fool yourself into thinking 5 correlated trades = diversification.",
+      },
+    ],
+  },
+  {
+    id: "stops",
+    icon: "🛑",
+    name: "Dynamic Stop Loss System",
+    color: "#ea580c",
+    accent: "#fdba74",
+    bg: "#fff7ed",
+    subtitle: "Signal-driven stop placement & trailing",
+    intro: "Static stops (fixed % or points) are the mark of an amateur. Professional stops are placed at levels where your thesis is INVALIDATED, derived from alpha signals.",
+    blocks: [
+      {
+        title: "OI-Based Stops (Options Intelligence)",
+        tag: "NIFTY CORE",
+        tagColor: "#dc2626",
+        content: "Use Nifty options open interest to place stops at institutional support/resistance levels.",
+        example: "LONG TRADE stop logic:\n1. Find highest Put OI strike below entry → that's institutional support\n2. Place stop 10-20 points below that strike\n3. If Put OI at that strike starts unwinding (OI dropping), move stop up\n\nExample: Long Nifty at 22,500\nHighest Put OI: 22,300 strike (15L contracts)\nStop: 22,280 (below OI wall)\n\nIf 22,300 Put OI drops from 15L to 8L → support weakening\nMove stop to 22,350 (tighter)\n\nSHORT TRADE: mirror with Call OI walls above.",
+      },
+      {
+        title: "ATR-Based Trailing Stop",
+        tag: "CORE",
+        tagColor: "#dc2626",
+        content: "Trail stops using Average True Range to give trades room proportional to current volatility.",
+        example: "Trailing Stop = Highest Close - (ATR(14) × Multiplier)\n\nMultiplier by strategy:\nScalping (5-min): 1.0 × ATR\nIntraday: 1.5 × ATR\nSwing (2-5 days): 2.0 × ATR\nPositional (1-4 weeks): 2.5 × ATR\n\nExample (Intraday): Nifty 15-min ATR = 40 points\nTrailing stop = High - (40 × 1.5) = High - 60 points\n\nStop ONLY moves in your favor, never against.\nRecalculate every candle close.",
+      },
+      {
+        title: "VWAP + Volume Profile Stop",
+        tag: "INTRADAY",
+        tagColor: "#2563eb",
+        content: "For intraday Nifty trades, VWAP and volume profile provide the most reliable stop levels.",
+        example: "LONG intraday:\nInitial stop: Below VWAP (if entry above VWAP)\nSecondary stop: Below POC (Point of Control from volume profile)\nFinal stop: Below Value Area Low (VAL)\n\nLogic: If price can't hold VWAP, the intraday thesis is failing.\nPOC acts as 'fair value' — breaking below means sentiment has shifted.\n\nSHORT intraday: mirror above VWAP, POC, VAH.\n\nNever set intraday stop wider than 0.5% of Nifty level.",
+      },
+      {
+        title: "Futures Basis Stop Trigger",
+        tag: "NIFTY SPECIFIC",
+        tagColor: "#0f766e",
+        content: "Nifty futures basis (premium/discount) validates or invalidates your directional thesis.",
+        example: "IF LONG Nifty:\nBasis turns negative (futures < spot) → basis stop triggered\nAction: Tighten stop to breakeven or exit 50% position\n\nWhy: Negative basis means shorts are dominating futures.\nYour long thesis is being contradicted by derivative positioning.\n\nIF SHORT Nifty:\nBasis turns strongly positive (> 0.3%) → basis stop triggered\nAction: Same — tighten or reduce\n\nBasis is a CONFIRMATION stop, not primary. Use alongside price stops.",
+      },
+      {
+        title: "Time-Based Stops",
+        tag: "OFTEN OVERLOOKED",
+        tagColor: "#7c3aed",
+        content: "If a trade hasn't worked within the expected timeframe, the thesis is likely wrong.",
+        example: "Intraday trade: If not profitable within 45 minutes → exit\nSwing trade: If not profitable within 3 sessions → reduce 50%\nExpiry trade: If max pain hasn't attracted price by Monday → exit\n\nTime stop for Nifty opening range breakout:\nIf breakout trade not profitable by 10:30 AM → exit\nMorning moves that fail by mid-morning rarely recover.\n\nTime stops prevent 'hoping' — the most expensive emotion in trading.",
+      },
+      {
+        title: "Composite Stop Logic",
+        tag: "SYSTEM LEVEL",
+        tagColor: "#dc2626",
+        content: "In practice, use MULTIPLE stop conditions. Exit when ANY triggers.",
+        example: "A Nifty long position exits when FIRST of these hits:\n\n1. Price stop: Below Put OI wall (structural)\n2. ATR trail: High - 2×ATR breached (volatility)\n3. Basis stop: Futures basis turns negative (sentiment)\n4. VIX stop: India VIX spikes > 20% in a session (regime)\n5. Time stop: Not profitable in 3 sessions (conviction)\n6. Portfolio stop: Total portfolio drawdown > 3% today (survival)\n\nFIRST trigger wins. No overrides. No 'one more chance'.\nCode these as hard rules, not discretionary.",
+      },
+    ],
+  },
+  {
+    id: "exposure",
+    icon: "🎚️",
+    name: "Exposure & Regime Control",
+    color: "#0f766e",
+    accent: "#5eead4",
+    bg: "#f0fdfa",
+    subtitle: "Total portfolio exposure based on market regime",
+    intro: "Individual trade risk is necessary but not sufficient. You need PORTFOLIO-LEVEL controls that scale total exposure based on the regime signals from your alpha library.",
+    blocks: [
+      {
+        title: "India VIX Regime Ladder",
+        tag: "PRIMARY CONTROL",
+        tagColor: "#dc2626",
+        content: "India VIX is your master exposure dial. This single signal prevents most catastrophic losses.",
+        example: "VIX Zone → Max Gross Exposure → Strategy Bias\n\n< 12 (Complacency):  80% → Mean reversion, sell options\n12-15 (Normal):     100% → Full strategy suite active\n15-18 (Elevated):    75% → Reduce option selling, momentum only\n18-22 (Fear):        50% → Only high-conviction trades, buy hedges\n22-28 (Panic):       25% → Defensive only, hedge existing\n> 28 (Crisis):       10% → Capital preservation, buy deep OTM puts\n\nTransition rule: Move ONE step at a time.\nDon't jump from 100% to 25% — scale gradually over 2-3 sessions.\nVIX > 35 = close everything, wait. The opportunity cost of sitting out is tiny compared to the risk of ruin.",
+      },
+      {
+        title: "FII Flow Regime Overlay",
+        tag: "NIFTY CORE",
+        tagColor: "#0f766e",
+        content: "FII flows determine the medium-term direction of Nifty. Use rolling cumulative flows as an exposure overlay.",
+        example: "Calculate: 10-day rolling FII net flow (cash + F&O)\n\nFII Regime → Exposure Adjustment\n\nStrong buying (> ₹5000cr/10d): +20% exposure allowance\nMild buying (₹1000-5000cr):    Base exposure\nNeutral (-₹1000 to +₹1000):    Base exposure\nMild selling (-₹5000 to -₹1000): -15% exposure\nStrong selling (< -₹5000cr/10d): -30% exposure\n\nCRITICAL: When FII is selling AND DII is buying heavily,\nit often marks a bottom. But don't try to catch the knife.\nWait for FII flow to stabilize (3 consecutive days of reduced selling)\nbefore adding exposure back.",
+      },
+      {
+        title: "Correlation Regime Switch",
+        tag: "PORTFOLIO LEVEL",
+        tagColor: "#2563eb",
+        content: "When Nifty stock correlations spike, diversification fails. Reduce exposure because your risk is higher than it appears.",
+        example: "Monitor: Average pairwise correlation of Nifty 50 stocks (21-day rolling)\n\nCorrelation < 0.3 (Dispersed): Full stock-picking exposure\n    → Individual stock alphas work, sector rotation active\n\nCorrelation 0.3-0.5 (Normal): Standard exposure\n    → Mix of stock and index positions\n\nCorrelation 0.5-0.7 (Converging): Reduce stock exposure 30%\n    → Switch to index-level trading, stock-picking alpha is diluted\n\nCorrelation > 0.7 (Crisis): Reduce to 50% of normal\n    → Everything moves together, only trade Nifty index\n    → Your 10 'diversified' positions are really 1 bet",
+      },
+      {
+        title: "Expiry Week Exposure Rules",
+        tag: "NIFTY SPECIFIC",
+        tagColor: "#ea580c",
+        content: "Expiry weeks have different risk profiles. Gamma risk, pinning, and unwinding create unique dynamics.",
+        example: "WEEKLY EXPIRY (Tuesday):\nWed-Fri: Normal exposure, new positions OK\nMonday: No new short option positions\nTuesday pre-12PM: 50% max exposure, close ITM shorts\nTuesday post-2PM: Emergency only, no new positions\n\nMONTHLY EXPIRY (Last Tuesday):\nExpiry week: Reduce by 20% (unwinding volatility)\nLast 2 days: Reduce by 40%\nExpiry day: Close all near-month positions by 1 PM\n\nROLLOVER PERIOD (Last 3 days):\nMonitor rollover % — if below 60%, expect forced liquidation\nDon't swim against rollover flows",
+      },
+      {
+        title: "Macro Event Exposure Calendar",
+        tag: "EVENT RISK",
+        tagColor: "#7c3aed",
+        content: "Known events with unknown outcomes require pre-planned exposure reduction.",
+        example: "Event → Pre-Event Action → When\n\nRBI MPC: Reduce 30%, buy straddle → Day before\nUnion Budget: Reduce 50%, buy straddle → Day before\nUS Fed Decision: Reduce 20% → Day of (Indian evening)\nNifty 50 Rebalancing: Exit affected stocks → Announcement day\nElection Results: Reduce 60% → Day before counting\nUS Jobs Report: Reduce 15% → Day of (Indian evening)\nQuarterly Results (TCS/Infy): Reduce sector exposure → Day before\n\nPost-event: Wait for 30 minutes of trading to assess.\nDon't rush back in. Let the market digest the news.\nIV crush after events = opportunity to sell options.",
+      },
+      {
+        title: "Maximum Loss Circuit Breakers",
+        tag: "SURVIVAL",
+        tagColor: "#dc2626",
+        content: "Hard limits that trigger automatic de-risking. These are NON-NEGOTIABLE and AUTOMATED.",
+        example: "Daily Loss Limit:\n  > 2% portfolio loss → Reduce all positions by 50%\n  > 3% portfolio loss → Close ALL positions. Done for the day.\n\nWeekly Loss Limit:\n  > 4% portfolio loss → Reduce max exposure to 50% for rest of week\n  > 6% portfolio loss → Flat. No trading until next Monday.\n\nMonthly Loss Limit:\n  > 8% portfolio loss → Reduce max exposure to 25% for rest of month\n  > 12% portfolio loss → STOP. Review entire system. No trading for 2 weeks.\n\nDrawdown from Peak:\n  > 15% from equity peak → Half all risk limits\n  > 20% from equity peak → Quarter all risk limits\n  > 25% from equity peak → Stop trading. Full system review.\n\nTHESE ARE HARDCODED. No human override. No exceptions.\nThe #1 cause of blowups is disabling risk limits 'just this once'.",
+      },
+    ],
+  },
+  {
+    id: "hedging",
+    icon: "🛡️",
+    name: "Hedging Strategies",
+    color: "#2563eb",
+    accent: "#93c5fd",
+    bg: "#eff6ff",
+    subtitle: "Using alpha signals to trigger protection",
+    intro: "Hedging isn't just buying puts randomly. Your alpha signals tell you WHEN to hedge and HOW MUCH to spend. The goal is asymmetric protection: small cost, large payout in disaster.",
+    blocks: [
+      {
+        title: "Signal-Triggered Put Buying",
+        tag: "PRIMARY HEDGE",
+        tagColor: "#dc2626",
+        content: "Buy Nifty puts when your alpha signals flash warning combinations, not when you're already losing.",
+        example: "HEDGE TRIGGER (any 3 of these 5):\n1. FII selling > ₹3000cr for 3+ consecutive days\n2. India VIX rising > 15% in a week\n3. Nifty futures basis turning negative\n4. US 10Y yield spiking > 20bps in a week\n5. Credit spreads widening (global risk-off)\n\nHedge execution:\nBuy 3-5% OTM monthly Nifty puts\nSize: Cover 50-70% of net long exposure\nBudget: 0.3-0.5% of portfolio per month MAX\nRoll monthly if threat persists\n\nKey: Buy puts when VIX is LOW (cheap). Not when everyone is panicking (expensive).\nBest hedge timing: VIX < 13 AND your signals show early warning.",
+      },
+      {
+        title: "Collar Strategy (Nifty Specific)",
+        tag: "COST-EFFICIENT",
+        tagColor: "#0f766e",
+        content: "Sell upside calls to fund downside puts. Zero or low-cost hedge at the expense of capping gains.",
+        example: "Portfolio: ₹50L long Nifty exposure\nNifty at: 22,500\n\nBuy: 22,000 PE (3 month) → costs ₹15,000\nSell: 23,200 CE (3 month) → receives ₹14,000\nNet cost: ₹1,000 (essentially free)\n\nProtection: Full hedge below 22,000\nTradeoff: Gains capped at 23,200\n\nWhen to use:\n- Before known events (Budget, Elections)\n- When VIX is elevated (puts expensive, calls also expensive)\n- When you want to stay invested but can't afford the drawdown\n\nAdjust strikes based on max pain and OI distribution.",
+      },
+      {
+        title: "Tail Risk Hedge (Black Swan Protection)",
+        tag: "INSURANCE",
+        tagColor: "#7c3aed",
+        content: "Always maintain a small allocation to deep OTM puts. This is insurance against the unthinkable.",
+        example: "Permanent allocation: 0.1-0.2% of portfolio per month\n\nBuy: 8-10% OTM Nifty monthly puts (deep out of money)\nQuantity: Enough to cover 30-50% of portfolio in a -10% crash\n\nMath: These puts are cheap (₹5-15 each)\nIn a -10% crash, they could be worth ₹500-1500 each\nPayoff ratio: 50-100x in disaster\n\nThe 0.2%/month drag (2.4%/year) is the cost of sleeping at night.\n\nReal example: COVID crash March 2020\nNifty fell 38% in 1 month\n10% OTM puts bought for ₹8 were worth ₹3,000+\nThis hedge ALONE would have saved the portfolio.",
+      },
+      {
+        title: "Cross-Asset Hedge (INR + Gold)",
+        tag: "DIVERSIFICATION",
+        tagColor: "#ea580c",
+        content: "When Nifty-specific hedges are expensive, use correlated assets for cheaper protection.",
+        example: "Nifty crashes correlate with:\n1. INR depreciation (USD/INR rises)\n2. Gold appreciation (flight to safety)\n3. India VIX spike (can be traded via VIX futures)\n\nCheaper hedge alternatives:\n\n→ Long USD/INR futures (NSE currency segment)\n  When Nifty falls 5%, USD/INR typically rises 2-3%\n  Margin requirement much lower than Nifty options\n\n→ Long MCX Gold / Gold ETF\n  Nifty-Gold correlation: -0.3 to -0.5 in crisis\n  Acts as hedge + potential profit center\n\n→ Long US index ETF (Nasdaq 100 / S&P 500 via MF)\n  Partial hedge against India-specific risk\n  Doesn't help in global sell-off\n\nUse when: India VIX is high (Nifty puts expensive)\nAdvantage: These hedges have POSITIVE carry sometimes.",
+      },
+      {
+        title: "Dynamic Hedge Ratio",
+        tag: "ADVANCED",
+        tagColor: "#2563eb",
+        content: "Adjust your hedge size based on your alpha signals' aggregate risk reading.",
+        example: "Composite Risk Score (from your alpha signals):\n\nSignals feeding risk score:\n- India VIX percentile rank (0-100)\n- FII 10-day cumulative flow (normalized)\n- Nifty Z-score (distance from mean)\n- USD/INR trend (rising = bad)\n- Global risk indicators (credit spreads, DXY)\n\nRisk Score → Hedge Ratio:\n0-20 (Low risk):     5% of portfolio hedged\n20-40 (Normal):     15% hedged\n40-60 (Elevated):   30% hedged\n60-80 (High):       50% hedged\n80-100 (Extreme):   75% hedged\n\nRebalance hedge weekly or when score moves 15+ points.\nAutomate this. Don't rely on discretion when markets are crashing.\nBy the time you FEEL you need to hedge, it's too late.",
+      },
+    ],
+  },
+  {
+    id: "monitoring",
+    icon: "📊",
+    name: "Real-Time Risk Dashboard",
+    color: "#0369a1",
+    accent: "#7dd3fc",
+    bg: "#f0f9ff",
+    subtitle: "What to monitor every trading day",
+    intro: "A risk management system is only as good as its monitoring. Here's exactly what your dashboard should show, organized by check frequency.",
+    blocks: [
+      {
+        title: "Pre-Market Check (8:30 - 9:00 AM IST)",
+        tag: "DAILY RITUAL",
+        tagColor: "#dc2626",
+        content: "Before the market opens, review these signals to set the day's risk parameters.",
+        example: "□ GIFT Nifty: Gap direction and size vs previous close\n□ US Markets: S&P 500, Nasdaq close and futures\n□ Asia Markets: Nikkei, Hang Seng, SGX direction\n□ USD/INR: Overnight move, RBI intervention signals\n□ Crude Oil: Brent overnight change\n□ India VIX: Previous close level\n□ FII/DII Data: Previous day flows (published 8:30 PM prior day)\n□ F&O OI Data: Overnight OI changes in Nifty options\n□ Max Pain: Current max pain strike for the week\n□ News Scan: Any overnight corporate or macro events\n\nDecision: Set today's max exposure and direction bias\nTime: This should take 10 minutes. Automate the data pull.",
+      },
+      {
+        title: "Live Session Monitors (9:15 AM - 3:30 PM)",
+        tag: "REAL-TIME",
+        tagColor: "#ea580c",
+        content: "During market hours, these metrics should be updating in real-time on your dashboard.",
+        example: "TIER 1 — Glance every 5 minutes:\n• P&L (today, this week, this month, from peak)\n• Current exposure vs allowed exposure\n• India VIX live level and intraday change\n• Nifty futures basis (live)\n• Circuit breaker status (any limits hit?)\n\nTIER 2 — Check every 30 minutes:\n• OI change at key strikes (support/resistance shifting?)\n• PCR live reading\n• VWAP distance (for intraday positions)\n• Advance/Decline ratio of Nifty 50 stocks\n• Bank Nifty vs Nifty divergence\n\nTIER 3 — Check hourly:\n• Sector-wise performance breakdown\n• Block deal alerts\n• Delivery % tracking for held positions\n• Intraday FII/DII provisional data (if available)",
+      },
+      {
+        title: "Post-Market Review (3:30 - 4:30 PM)",
+        tag: "DAILY CLOSE",
+        tagColor: "#2563eb",
+        content: "End-of-day review to prepare for next session and update risk models.",
+        example: "□ Record: Day's P&L, max drawdown, Sharpe for the day\n□ Analyze: Which signals worked? Which failed?\n□ Update: OI distribution map for next day\n□ Check: Futures rollover data (in expiry week)\n□ Log: Any rule violations (did you override a stop?)\n□ Review: Position-level P&L attribution\n□ Plan: Tomorrow's max exposure based on updated signals\n□ Verify: All stops are set correctly for overnight\n\nWeekly (Friday PM):\n□ Calculate: Weekly Sharpe ratio, win rate, avg win/loss\n□ Review: Signal accuracy scores per category\n□ Adjust: Any model weight changes needed?\n\nMonthly:\n□ Full backtest vs live performance comparison\n□ Drawdown analysis and recovery time\n□ Signal decay analysis — are any signals losing power?",
+      },
+      {
+        title: "Alert System Architecture",
+        tag: "AUTOMATION",
+        tagColor: "#7c3aed",
+        content: "Automate alerts so you don't have to stare at screens all day. Categorize by severity.",
+        example: "🔴 CRITICAL (Immediate action, SMS + Telegram):\n• Portfolio loss > 2% today\n• Any position loss > 3%\n• India VIX spike > 15% intraday\n• Stop loss triggered on any position\n• Circuit breaker limits approaching\n\n🟡 WARNING (Check within 15 min, Telegram):\n• FII selling pace > ₹2000cr by noon\n• Nifty futures basis turning negative\n• Key OI wall being breached\n• VIX crossing regime threshold\n• New position entering loss territory\n\n🟢 INFO (Review at next check, Dashboard log):\n• New max pain calculation\n• Sector rotation shifts\n• Block deal notifications\n• Rollover data updates\n• Signal score changes\n\nAutomate via: Python + Telegram Bot API\nData source: NSE live feed or broker API (Zerodha/Angel/Upstox)",
+      },
+      {
+        title: "Risk Score Composite Dashboard",
+        tag: "MASTER VIEW",
+        tagColor: "#0f766e",
+        content: "Single number that tells you the current risk state. This is what you check first.",
+        example: "NIFTY RISK SCORE: 0 (safest) to 100 (most dangerous)\n\nComponents and weights:\n• India VIX percentile (25%)\n• FII flow trend - 5 day (20%)\n• Nifty Z-score from 50 DMA (15%)\n• Options GEX sign (10%)\n• Futures basis direction (10%)\n• USD/INR trend (10%)\n• Global risk (credit spreads + DXY) (10%)\n\nScore → Action:\n0-25:  GREEN — Full systems go, max exposure OK\n25-50: YELLOW — Normal caution, all strategies active\n50-70: ORANGE — Reduce exposure 25%, tighten stops\n70-85: RED — Reduce exposure 50%, activate hedges\n85-100: BLACK — Minimal exposure, full hedges, preserve capital\n\nDisplay this as a single gauge on your main screen.\nRecalculate every 15 minutes during market hours.",
+      },
+    ],
+  },
+];
+
+const top30Data = [
+  {
+    id: "p1",
+    name: "Phase 1 — Foundation",
+    week: "Week 1-2",
+    color: "#dc2626",
+    accent: "#fca5a5",
+    description: "These 10 signals give you ~60% of your total edge. They're the highest signal-to-noise, easiest to source, and most battle-tested in Indian markets. Build these FIRST and don't move on until they're rock solid.",
+    signals: [
+      {
+        rank: 1,
+        name: "FII Cash Market Net Flow (Daily)",
+        category: "Flow",
+        catIcon: "💰",
+        why: "THE single most predictive medium-term signal for Nifty. FII flows drive 60-70% of Nifty's directional moves. No other signal comes close for swing trading.",
+        formula: "FII Buy Value - FII Sell Value (cash segment)",
+        dataSource: "NSE website → Market Data → FII/DII data. Published daily ~8:30 PM IST. Free.",
+        implementation: "Download CSV daily. Compute: raw daily, 5d rolling sum, 10d rolling sum, 21d cumulative. Normalize by 90-day average for signal strength.",
+        edge: "Sustained FII buying > ₹1000cr/day for 5+ days = strong bullish regime. Sustained selling = bearish. Regime transitions are most profitable.",
+        timeframe: "Daily update, swing-trade horizon (3-15 days)",
+      },
+      {
+        rank: 2,
+        name: "India VIX Level & Regime",
+        category: "Volatility",
+        catIcon: "🌊",
+        why: "Your MASTER RISK SWITCH. Controls position sizing, strategy selection, and exposure limits. Without this, you're flying blind on risk.",
+        formula: "India VIX value + percentile rank in 252-day distribution",
+        dataSource: "NSE → India VIX real-time. Also available via broker APIs (Zerodha Kite, Angel One). Free.",
+        implementation: "Track: absolute level, daily % change, percentile rank (252d), Z-score. Create regime buckets: <12 (complacent), 12-16 (normal), 16-20 (elevated), 20-25 (fear), >25 (panic).",
+        edge: "VIX < 13 = sell options, full exposure. VIX > 20 = buy protection, reduce exposure. VIX spike > 15% in one day often marks short-term bottom within 2-3 sessions.",
+        timeframe: "Real-time during market, daily regime classification",
+      },
+      {
+        rank: 3,
+        name: "Nifty Options OI Distribution",
+        category: "Options",
+        catIcon: "🎯",
+        why: "India's options market is the world's largest by volume. OI walls define support/resistance more reliably than any technical level. This is your EDGE over global quants who don't understand Indian options.",
+        formula: "Open Interest per strike for Calls and Puts across all active strikes",
+        dataSource: "NSE → Option Chain page. Broker APIs provide real-time OI. Free via NSE, real-time via API.",
+        implementation: "Scrape full option chain every 3 minutes. Track: highest Call OI strike (resistance), highest Put OI strike (support), OI change per strike (Δ from previous day/hour). Visualize as heatmap.",
+        edge: "Nifty gravitates toward highest OI zones. Heavy Put OI = strong support (option writers defend it). Heavy Call OI = strong resistance. OI walls shifting = support/resistance moving.",
+        timeframe: "Real-time intraday, update every 3-5 minutes",
+      },
+      {
+        rank: 4,
+        name: "Nifty Futures Basis (Premium/Discount)",
+        category: "Microstructure",
+        catIcon: "🔬",
+        why: "Fastest real-time sentiment indicator. Basis reflects institutional positioning RIGHT NOW. When smart money is bullish, they pay premium for futures.",
+        formula: "(Nifty Futures Price - Nifty Spot) / Nifty Spot × 100",
+        dataSource: "Any broker terminal — real-time. NSE for end-of-day. Zerodha Kite API gives live data.",
+        implementation: "Compute continuously during market hours. Track: current basis, basis trend (rising/falling in last 30 min), basis percentile vs 30-day history. Flag: basis turning negative = bearish alarm.",
+        edge: "Positive basis (>0.1%) = bullish positioning. Negative basis = bearish. Basis collapsing rapidly = institutional selling in real-time. React before price catches up.",
+        timeframe: "Real-time, tick-level computation",
+      },
+      {
+        rank: 5,
+        name: "GIFT Nifty Overnight Gap Signal",
+        category: "Momentum",
+        catIcon: "🚀",
+        why: "Predicts Nifty's opening direction with ~70% accuracy. Gives you a 15-minute head start on the market every single day.",
+        formula: "(GIFT Nifty 8:45 AM price - Nifty previous close) / Nifty previous close × 100",
+        dataSource: "NSE IFSC (GIFT City) — available from 6:30 AM IST. Broker apps show it pre-market. Free.",
+        implementation: "Capture GIFT Nifty at 8:45 AM and 9:00 AM. Compute gap %. Classify: small (<0.3%), medium (0.3-0.7%), large (>0.7%). Track historical gap fill rates by size bucket.",
+        edge: "Large gaps (>0.7%) fill only ~35% of the time — these tend to trend. Small gaps (<0.3%) fill ~65% — mean reversion. Medium gaps are noise. Direction + size = your first trade decision each day.",
+        timeframe: "Pre-market (8:30-9:15 AM), sets daily bias",
+      },
+      {
+        rank: 6,
+        name: "Put-Call Ratio (OI-Based)",
+        category: "Options",
+        catIcon: "🎯",
+        why: "Best single-number sentiment indicator for Nifty. Extreme readings are contrarian signals with 65-70% accuracy at turning points.",
+        formula: "Total Nifty Put OI / Total Nifty Call OI",
+        dataSource: "NSE Option Chain → sum all Put OI / sum all Call OI. Available real-time.",
+        implementation: "Compute every 3 minutes. Track: absolute level, 5-day moving average, percentile rank (60d). Define zones: <0.7 (bearish extreme → contrarian bullish), 0.7-1.0 (neutral), 1.0-1.3 (bullish), >1.3 (bullish extreme → contrarian caution).",
+        edge: "PCR rising from below 0.8 toward 1.0+ = put writers gaining confidence = bullish. PCR spiking above 1.5 = panic put buying = contrarian buy signal. PCR < 0.65 = extreme call buying = top warning.",
+        timeframe: "Real-time intraday, daily for trend",
+      },
+      {
+        rank: 7,
+        name: "FII Index Futures Long-Short Ratio",
+        category: "Flow",
+        catIcon: "💰",
+        why: "Directly shows how foreign institutions are POSITIONED, not just what they're buying. Positioning predicts direction more reliably than flow alone.",
+        formula: "FII Long Contracts / FII Short Contracts in Nifty + Bank Nifty futures",
+        dataSource: "NSE → Participant-wise OI data → FII/FPI category. Published daily with 1-day lag. Free.",
+        implementation: "Download daily. Compute: ratio, 5d MA of ratio, percentile rank (90d). Flag extremes: ratio > 3.0 = very bullish, ratio < 1.0 = very bearish, ratio > 5.0 or < 0.5 = crowded (reversal risk).",
+        edge: "When FII L/S ratio crosses above 2.0 from below, Nifty rallies 70% of the time in next 5 sessions. When it drops below 1.0, Nifty falls 65% of time. Extremes (>5 or <0.5) often mark reversals.",
+        timeframe: "Daily update (1-day lagged), swing-trade signal",
+      },
+      {
+        rank: 8,
+        name: "Max Pain Strike",
+        category: "Options",
+        catIcon: "🎯",
+        why: "In the world's most active options market, option writers (institutions) have massive incentive to push price toward max pain. It's a price magnet, especially in last 3 days before expiry.",
+        formula: "Strike where sum of (Call buyer losses + Put buyer losses) is maximized",
+        dataSource: "Computed from NSE option chain data. Several free websites (Sensibull, Opstra) show it.",
+        implementation: "Calculate for both weekly and monthly expiry. Track: max pain level, distance from current price (in ATR units), direction to max pain. Key metric: if Nifty is 200+ points away from max pain with 2 days to expiry = strong gravitational pull.",
+        edge: "In last 3 days of expiry, Nifty moves toward max pain ~60% of the time. Combine with OI distribution for confirmation. If max pain AND highest OI strike are at same level = very strong magnet.",
+        timeframe: "Daily update, strongest signal in last 3 days before expiry",
+      },
+      {
+        rank: 9,
+        name: "US Market Overnight Return",
+        category: "Momentum",
+        catIcon: "🚀",
+        why: "S&P 500 and Nasdaq performance after Indian market close is absorbed at next morning's open. This is a free look at the future — you know the input before the market prices it.",
+        formula: "S&P 500 and Nasdaq 100 close-to-close return (after 9:30 PM IST)",
+        dataSource: "Any financial data provider. Yahoo Finance API, broker apps, Google Finance. Free.",
+        implementation: "Capture US market close at ~4 AM IST (or previous night). Compute return. Weight: S&P 500 (40%), Nasdaq (40%), Dow (20%). Combine with GIFT Nifty gap for confirmation. Track: correlation between US return and next-day Nifty return (rolling 60d).",
+        edge: "US down > 1.5% = Nifty opens gap down ~85% of time. US up > 1% = Nifty opens gap up ~75%. The correlation varies by regime — stronger when FII is active, weaker during domestic events.",
+        timeframe: "Pre-market signal, captured previous night / early morning",
+      },
+      {
+        rank: 10,
+        name: "Nifty Futures OI + Price Direction",
+        category: "Microstructure",
+        catIcon: "🔬",
+        why: "THE classic Indian market framework. Every professional trader in India uses this. OI change + price direction tells you if moves are backed by conviction or just noise.",
+        formula: "Classify: Price ↑ + OI ↑ = Long Buildup | Price ↓ + OI ↑ = Short Buildup | Price ↑ + OI ↓ = Short Covering | Price ↓ + OI ↓ = Long Unwinding",
+        dataSource: "NSE end-of-day data for Nifty futures. Real-time via broker API.",
+        implementation: "Compute daily. Track classification streak (e.g., 3 consecutive days of Long Buildup = strong trend). Monitor OI magnitude — large OI increase with price move = high conviction. Small OI change = low conviction.",
+        edge: "Long Buildup for 3+ days → Nifty continues higher 72% of time. Short Covering (price up but OI falling) → rally is weak, likely to fade. Short Buildup for 3+ days → continue selling 68% of time.",
+        timeframe: "Daily (end-of-day), can compute intraday from live OI snapshots",
+      },
+    ],
+  },
+  {
+    id: "p2",
+    name: "Phase 2 — Edge Builders",
+    week: "Week 3-4",
+    color: "#2563eb",
+    accent: "#93c5fd",
+    description: "These 10 signals refine your entries, exits, and timing. They add ~25% more edge on top of Phase 1. Only build these AFTER Phase 1 is live and tested.",
+    signals: [
+      {
+        rank: 11,
+        name: "Gamma Exposure (GEX)",
+        category: "Options",
+        catIcon: "🎯",
+        why: "Tells you whether market makers will SUPPRESS or AMPLIFY the next move. Positive GEX = low vol (dealers hedge against you). Negative GEX = explosive moves (dealers hedge WITH you).",
+        formula: "Net gamma of market maker positions across all Nifty option strikes",
+        dataSource: "Computed from option chain OI + Greeks. Needs option pricing model. Sensibull/Opstra provide approximations.",
+        implementation: "For each strike: Gamma × OI × 100 × Nifty² / 10⁷. Sum Calls (flip sign) + Puts. Track: GEX sign (positive/negative), GEX flip point (price where GEX changes sign), GEX magnitude.",
+        edge: "Positive GEX = Nifty range-bound, mean-reversion strategies work. Negative GEX = Nifty can move violently, use momentum strategies. GEX flip point is a critical support/resistance level.",
+        timeframe: "Compute every 15 minutes from live option chain",
+      },
+      {
+        rank: 12,
+        name: "RSI Multi-Timeframe",
+        category: "Mean Reversion",
+        catIcon: "🔄",
+        why: "When daily, hourly, and 15-min RSI all agree on oversold/overbought, reversal probability jumps from ~55% to ~75%. Multi-timeframe confirmation is the key.",
+        formula: "14-period RSI on 15-min, hourly, and daily charts simultaneously",
+        dataSource: "Computed from OHLC data at each timeframe. Any broker API provides this.",
+        implementation: "Run RSI(14) on 3 timeframes. Score: all 3 oversold (<30) = STRONG BUY signal (+3). Two oversold = moderate (+2). One = weak (+1). Mirror for overbought. Track RSI divergences (price new low but RSI higher low = bullish divergence).",
+        edge: "Nifty RSI(14) daily < 28 has produced positive 5-day returns in 72% of historical instances. Add hourly RSI < 25 confirmation → jumps to 80%. The 2-period RSI is even better for intraday.",
+        timeframe: "Real-time for intraday, daily for swing",
+      },
+      {
+        rank: 13,
+        name: "VWAP Distance & Reversion",
+        category: "Mean Reversion",
+        catIcon: "🔄",
+        why: "Institutional benchmark. Most institutional orders execute at VWAP. When Nifty deviates significantly from VWAP, institutions pull it back.",
+        formula: "(Current Nifty Price - Session VWAP) / Session VWAP × 100",
+        dataSource: "Computed from tick/minute data. Broker APIs provide VWAP. Can compute from OHLCV data.",
+        implementation: "Calculate running VWAP from 9:15 AM. Track: deviation %, VWAP slope (bullish/bearish day), number of VWAP crosses (many crosses = range day). Key level: >0.4% deviation = mean reversion opportunity.",
+        edge: "Nifty reverts to VWAP in afternoon session (1-2:30 PM) about 65% of days. Deviation > 0.5% from VWAP by 12 PM → fade trade with 2:1 reward/risk targeting VWAP.",
+        timeframe: "Intraday only — resets each session",
+      },
+      {
+        rank: 14,
+        name: "DII Cash Market Net Flow",
+        category: "Flow",
+        catIcon: "💰",
+        why: "DIIs (mutual funds, insurance) are the counterweight to FII. When FII sells and DII buys aggressively, it creates a FLOOR. Understanding both flows gives you the full picture.",
+        formula: "DII Buy Value - DII Sell Value (cash segment)",
+        dataSource: "NSE → FII/DII data. Same source as FII data. Published daily. Free.",
+        implementation: "Track alongside FII data. Key metric: FII-DII Divergence = FII net - DII net. When divergence is extreme (FII selling ₹5000cr+ while DII buying ₹4000cr+), a turning point is near. Also track SIP flow trend as DII floor.",
+        edge: "Maximum FII-DII divergence events (top 10% of divergence) have preceded Nifty reversals within 5-10 sessions 70% of the time. DII can't reverse FII-driven trends, but they cushion the fall.",
+        timeframe: "Daily, swing-trade horizon",
+      },
+      {
+        rank: 15,
+        name: "USD/INR Rate & Trend",
+        category: "Macro",
+        catIcon: "🌐",
+        why: "FII India allocation decisions are in DOLLARS. Weak INR = losses for FII even if Nifty rises → FII sells. Strong INR = FII equity gains amplified → FII stays/buys more. Currency is the hidden driver.",
+        formula: "USD/INR spot, daily change %, 20-day trend (slope), RBI intervention level estimate",
+        dataSource: "NSE Currency segment, RBI reference rate, broker APIs. Free.",
+        implementation: "Track: spot level, daily change, 20d EMA slope, distance from 200 DMA (trend), 1-month forward premium (RBI intervention proxy). Alert: INR depreciation > 0.5% in a day = Nifty headwind.",
+        edge: "Sharp INR depreciation (>1% in a week) preceded Nifty corrections in 65% of instances. INR stability + FII buying = strongest bullish combination. INR weakness + FII selling = stay flat.",
+        timeframe: "Daily for trend, real-time on volatile days",
+      },
+      {
+        rank: 16,
+        name: "Brent Crude Oil Price & Trend",
+        category: "Macro",
+        catIcon: "🌐",
+        why: "India imports ~85% of its oil. Crude is the single biggest macro risk for Nifty. Rising crude = current account pressure = INR weakness = FII outflow = Nifty fall. The chain is direct and reliable.",
+        formula: "Brent Crude price (USD), 5-day change %, 20-day trend, distance from $80/$90/$100 thresholds",
+        dataSource: "Any financial data provider. Yahoo Finance, TradingView, MCX. Free.",
+        implementation: "Track: absolute level, 5d/20d change, proximity to key thresholds ($80 = comfort, $90 = caution, $100 = alarm). Compute: Crude-INR combined stress index (crude rising + INR weakening simultaneously). Alert: Crude > $90 + INR weakening = maximum macro headwind.",
+        edge: "Crude above $95 for 10+ days has historically preceded Nifty corrections. Below $75 = macro tailwind, Nifty tends to outperform EM. Crude-INR combined stress index > 2σ = reduce exposure.",
+        timeframe: "Daily, medium-term macro signal",
+      },
+      {
+        rank: 17,
+        name: "Nifty Z-Score (20-Day)",
+        category: "Mean Reversion",
+        catIcon: "🔄",
+        why: "Simplest and most robust statistical signal. When Nifty is 2+ standard deviations from its mean, mathematical reversion probability is very high.",
+        formula: "(Nifty Close - 20-Day SMA) / 20-Day Standard Deviation",
+        dataSource: "Computed from Nifty closing prices. Any data source works.",
+        implementation: "Compute daily. Track: Z-score level, Z-score trend (rising/falling), consecutive days at extreme (>2 or <-2). Zone: Z > 2.0 = overbought, Z < -2.0 = oversold, Z > 2.5 = strongly overbought, Z < -2.5 = strongly oversold.",
+        edge: "Nifty Z-score < -2.0 → positive 5-day return 78% of the time. Z-score < -2.5 → positive 5-day return 85% of the time. Average reversion magnitude: 1.2% over 5 sessions. Very reliable for swing trades.",
+        timeframe: "Daily, swing-trade signal (3-7 day horizon)",
+      },
+      {
+        rank: 18,
+        name: "Opening Range Breakout (15-Min)",
+        category: "Microstructure",
+        catIcon: "🔬",
+        why: "The first 15 minutes absorb overnight information (GIFT Nifty gap, FII positioning, global cues). This range sets the battlefield for the day.",
+        formula: "First 15-minute candle High and Low (9:15-9:30 AM) as breakout levels",
+        dataSource: "Live market data from broker API. 15-minute OHLCV.",
+        implementation: "Record 9:30 AM high and low. Breakout: price closes above high on 5-min = go long. Closes below low = go short. Filter: Opening range width vs 20-day average ATR. Narrow OR (<40% of avg ATR) = high breakout probability. Wide OR (>80% of avg ATR) = likely range day.",
+        edge: "Narrow opening range + breakout = trends for the day 70% of the time. Wide opening range = often the day's high/low is already set by 9:45 AM. Combine with GIFT Nifty gap direction for confirmation.",
+        timeframe: "Intraday, signal generated at 9:30 AM",
+      },
+      {
+        rank: 19,
+        name: "OI Unwinding Classification",
+        category: "Options",
+        catIcon: "🎯",
+        why: "Tells you whether a move is FRESH (new positions being built) or EXHAUSTING (old positions being closed). Fresh moves continue. Exhausted moves reverse. This is the single biggest edge in reading Indian options.",
+        formula: "At each strike: classify OI change + price change into Long Buildup / Short Buildup / Long Unwinding / Short Covering",
+        dataSource: "NSE option chain + previous day OI. Broker APIs for real-time snapshots.",
+        implementation: "For top 20 strikes by OI: track OI change and premium change. Classify each strike. Aggregate: how many strikes show Long Buildup vs Short Buildup vs Unwinding. Create net buildup score. Track intraday shifts in classification.",
+        edge: "If 70%+ of high-OI strikes show Long Buildup = very strong trend, don't fade. If 60%+ show Short Covering (price up but OI falling) = rally is weak, will fade. Use to distinguish real breakouts from fake ones.",
+        timeframe: "Real-time with hourly OI snapshots, daily for big picture",
+      },
+      {
+        rank: 20,
+        name: "US 10-Year Treasury Yield",
+        category: "Macro",
+        catIcon: "🌐",
+        why: "Controls global risk appetite and EM fund flows. When US yields rise, money flows FROM India TO US bonds. This is the single most important global variable for Indian equity markets.",
+        formula: "US 10Y yield level, daily change, 5-day change, distance from key thresholds (4.0%, 4.5%, 5.0%)",
+        dataSource: "FRED, Yahoo Finance, TradingView, any financial data provider. Free.",
+        implementation: "Track: level, daily change (bps), 5d rolling change, trend (20 DMA slope). Alert: >10bps single-day spike = EM stress. Compute: India-US 10Y spread (carry trade signal). Track correlation with FII flows (rolling 60d).",
+        edge: "US 10Y spike > 20bps in a week preceded Nifty weakness in 70% of instances. US 10Y above 4.5% = persistent FII headwind for India. Below 3.5% = EM tailwind. The spread vs India 10Y matters for carry trade flows.",
+        timeframe: "Daily, medium-term macro signal",
+      },
+    ],
+  },
+  {
+    id: "p3",
+    name: "Phase 3 — Advanced Edge",
+    week: "Week 5-6",
+    color: "#7c3aed",
+    accent: "#7c3aed",
+    description: "These 10 signals add the final ~15% of edge. They require more sophisticated data pipelines and computation. Only build AFTER Phase 1+2 are profitable in paper trading.",
+    signals: [
+      {
+        rank: 21,
+        name: "News Sentiment Score (LLM-Powered)",
+        category: "Sentiment",
+        catIcon: "💬",
+        why: "This is where you deploy Claude/LLMs. Process Indian financial news faster than any human can read. Sentiment CHANGE is more predictive than absolute level.",
+        formula: "Aggregate sentiment score from top 5 Indian financial news sources, scored -1 to +1 per headline",
+        dataSource: "RSS feeds from ET, Moneycontrol, Livemint, BS, CNBC-TV18. Scrape every 15 minutes.",
+        implementation: "Use Claude API to score each headline (-1 to +1). Aggregate by hour. Track: current sentiment, 24-hour change, 5-day trend. Flag: sudden negative spike (>2σ from 5d average) = potential sell-off. Create sector-level sentiment too.",
+        edge: "Sentiment shift from positive to negative (not just negative sentiment) predicts next-day Nifty direction with ~62% accuracy. Combine with FII flow for confirmation → accuracy rises to ~70%.",
+        timeframe: "Real-time (15-minute refresh), daily aggregate for model input",
+      },
+      {
+        rank: 22,
+        name: "Expiry Week Pin Risk Score",
+        category: "Calendar",
+        catIcon: "📅",
+        why: "India's weekly and monthly expiry cycle creates predictable pinning behavior. In the world's most active options market, writers have enormous incentive to pin price at max OI/max pain.",
+        formula: "Composite of: days to expiry + distance to max pain + OI concentration at nearby strikes + GEX sign",
+        dataSource: "Computed from option chain data + max pain calculation.",
+        implementation: "Score 0-100 based on: DTE weight (closer = higher pin risk), distance to max pain (closer = higher), OI concentration ratio at nearest strikes, positive GEX (dealers suppress moves). Tuesday morning pin risk > 70 = high probability of pinning. Trade mean reversion toward pin target.",
+        edge: "On Tuesdays with pin risk score > 75, Nifty closed within 30 points of highest OI strike 65% of the time. Sell straddles at the pin target on Monday afternoon for Tuesday expiry. Very consistent income strategy.",
+        timeframe: "Daily computation, strongest signal Mon-Thu of expiry week",
+      },
+      {
+        rank: 23,
+        name: "IV-RV Spread (Variance Risk Premium)",
+        category: "Volatility",
+        catIcon: "🌊",
+        why: "When implied vol is much higher than realized vol, option sellers are being overpaid. This premium is the most consistent source of income in options trading — it exists because people overpay for insurance.",
+        formula: "(India VIX - 21-Day Realized Volatility) — computed in annualized vol points",
+        dataSource: "India VIX from NSE + computed realized vol from Nifty closing prices.",
+        implementation: "Compute daily. Track: spread level, percentile rank (252d), Z-score. Zones: spread > 5 vol points = options very rich (sell). Spread < 1 = options cheap (buy or don't sell). Spread negative = rare, vol event underway (buy protection).",
+        edge: "When IV-RV spread is in top quartile, short straddle/strangle strategies on Nifty generate positive returns 75% of weeks. The average variance risk premium in India is ~3-4 vol points — this is your structural edge in option selling.",
+        timeframe: "Daily, used for option selling strategy sizing",
+      },
+      {
+        rank: 24,
+        name: "Sector Rotation Momentum",
+        category: "Momentum",
+        catIcon: "🚀",
+        why: "Money doesn't leave the market — it rotates. Tracking which sectors FII/DII are rotating INTO tells you where the next Nifty move will come from, since top 5 stocks are 40% of the index.",
+        formula: "Relative strength ranking of Nifty sectoral indices (Bank, IT, Pharma, Auto, Metal, FMCG, Realty, Energy, PSU Bank) — 10d and 21d returns",
+        dataSource: "NSE sectoral indices. Available freely. Broker APIs provide real-time.",
+        implementation: "Rank sectors by 10d and 21d relative returns. Track: rank changes (which sectors are improving/deteriorating), acceleration (sector moving up 3+ rank positions = strong rotation). Map to Nifty 50 stock weights to predict index impact.",
+        edge: "When Bank Nifty (40% of Nifty weight) is the top-ranked sector by 10d momentum, Nifty outperforms 68% of the time. When IT + Pharma lead (defensive rotation), Nifty is likely in late-cycle. Sector leadership change predicts regime change.",
+        timeframe: "Daily update, medium-term signal (1-4 weeks)",
+      },
+      {
+        rank: 25,
+        name: "Credit Spread Changes (Global)",
+        category: "Macro",
+        catIcon: "🌐",
+        why: "Credit markets see trouble BEFORE equity markets — always. Widening credit spreads are the earliest warning of risk-off that will eventually hit India via FII outflows.",
+        formula: "US High Yield OAS (Option-Adjusted Spread), daily change, 5d/20d trend",
+        dataSource: "FRED (Federal Reserve Economic Data) — free. Bloomberg for real-time. ICE BofA indices.",
+        implementation: "Track: US HY OAS level, daily change, 20d trend. Alert: spread widening > 20bps in a week = global risk-off brewing. Compute: correlation with FII India flows (rolling 60d). Spreads widening + FII selling India = confirmed risk-off.",
+        edge: "US HY spread widening preceded major Nifty sell-offs by 1-3 weeks in 2018, 2020, 2022, and 2023. Early warning: spread crosses above 400bps = high alert. Above 500bps = reduce India equity exposure significantly.",
+        timeframe: "Daily, early warning signal (1-3 week lead time)",
+      },
+      {
+        rank: 26,
+        name: "Delivery Volume Percentage",
+        category: "Microstructure",
+        catIcon: "🔬",
+        why: "India-specific signal due to T+1 settlement. High delivery % = genuine buying with intent to hold. Low delivery % = speculative churning. Separates real demand from noise.",
+        formula: "Delivery Quantity / Total Traded Quantity × 100, for Nifty 50 stocks and aggregate",
+        dataSource: "NSE Bhavcopy (daily). Published free on NSE website every evening.",
+        implementation: "Compute: aggregate delivery % for Nifty 50 (weighted by turnover). Track: level, 5d/20d moving average, percentile rank. High delivery (>45%) on up days = strong accumulation. Low delivery (<30%) on up days = speculative rally (fragile).",
+        edge: "Rising Nifty + rising aggregate delivery % = sustainable rally (accumulation). Rising Nifty + falling delivery % = speculative rally that will correct. Delivery % > 50% on a big up day = institutional buying confirmed.",
+        timeframe: "Daily (end-of-day data), swing confirmation signal",
+      },
+      {
+        rank: 27,
+        name: "ATR Regime & Position Sizer",
+        category: "Volatility",
+        catIcon: "🌊",
+        why: "Not just a signal — it's your POSITION SIZING ENGINE. Every trade's size should be calibrated to current volatility. This single implementation prevents most oversize losses.",
+        formula: "ATR(14) on daily chart. Position multiplier = Median ATR (63d) / Current ATR",
+        dataSource: "Computed from daily OHLC. Any data source.",
+        implementation: "Compute: daily ATR(14), ATR percentile (63d and 252d), ATR ratio (5d ATR / 21d ATR for expansion/contraction detection). Position size = Base risk amount / (ATR × multiplier × lot size). Auto-scale: ATR in top quartile → positions 30-40% smaller.",
+        edge: "ATR-based position sizing reduces max drawdown by 25-35% compared to fixed-lot sizing in backtests. ATR compression (low ATR percentile) predicts breakouts — Bollinger squeeze inside Keltner channel is the classic setup.",
+        timeframe: "Daily computation, applied to every trade entry",
+      },
+      {
+        rank: 28,
+        name: "Earnings Season Running Beat/Miss Ratio",
+        category: "Sentiment",
+        catIcon: "💬",
+        why: "During quarterly results season (4 times/year), the running tally of beats vs misses predicts whether Nifty will rally or sell through the season. IT bellwethers (TCS, Infy) set the tone.",
+        formula: "Number of Nifty 50 companies that beat EPS consensus / Total that have reported so far",
+        dataSource: "Moneycontrol, Trendlyne, or broker research for consensus + actuals. Updated as each company reports.",
+        implementation: "Track as results come in (typically mid-Jan, mid-Apr, mid-Jul, mid-Oct). Compute: running beat %, miss %, in-line %. Compare to previous quarter's final ratio. If current quarter tracking better = bullish momentum through season. Track by sector too.",
+        edge: "If beat ratio is >65% after first 15 companies report, Nifty tends to rally through the rest of results season. If miss ratio is >40% early on, defensive positioning works. TCS and Infosys results (first to report) set sentiment for the entire season.",
+        timeframe: "Quarterly event (4 times/year), tracked over 3-4 week reporting season",
+      },
+      {
+        rank: 29,
+        name: "Straddle Price as Expected Move",
+        category: "Options",
+        catIcon: "🎯",
+        why: "The market itself tells you how much Nifty is expected to move. The ATM straddle price = the market's consensus on the expected range. Trade against this when it's wrong.",
+        formula: "ATM Call Price + ATM Put Price = Expected Move in points. Also compute as % of Nifty level.",
+        dataSource: "NSE option chain — ATM strike, add call + put premium. Real-time.",
+        implementation: "Track for weekly and monthly expiry. Compare: expected move vs actual move (was market right?). If market consistently overestimates moves = sell straddles. Historical accuracy rate: what % of weeks does Nifty stay within the straddle-implied range?",
+        edge: "Nifty stays within the weekly straddle-implied range ~68% of weeks (consistent with 1σ). This means selling weekly strangles outside the expected range wins most weeks. The edge is in identifying WHICH weeks will be outliers (use VIX regime + event calendar).",
+        timeframe: "Weekly computation, options strategy signal",
+      },
+      {
+        rank: 30,
+        name: "Advance Tax Date Calendar Effect",
+        category: "Calendar",
+        catIcon: "📅",
+        why: "Indian corporates must pay advance tax on March 15, June 15, September 15, and December 15. They sell equity to raise cash. This creates PREDICTABLE selling pressure 2-3 days before.",
+        formula: "Calendar-based: days to next advance tax date + historical return pattern in that window",
+        dataSource: "Fixed dates — no data source needed. Historical Nifty returns around these dates for calibration.",
+        implementation: "Flag: 5 days before each tax date. Track: Nifty return in [-5, -1] and [0, +3] days around each date. The selling window is typically T-3 to T-1. Recovery begins T+1. Compute: average historical return in selling window, win rate of buying on tax date.",
+        edge: "Nifty has been negative in the 3 days before March 15 advance tax date in 70% of years. Average dip: 0.5-1.0%. Buying on the tax date itself and holding for 5 days has been profitable 65% of the time. Simple, mechanical, repeatable.",
+        timeframe: "4 times per year, signal active for ~5 days each time",
+      },
+    ],
+  },
+];
+
+const strikeData = [
+  {
+    id: "framework",
+    icon: "🏗️",
+    name: "Signal → Trade Conversion Framework",
+    color: "#7c3aed",
+    accent: "#7c3aed",
+    bg: "#f5f3ff",
+    subtitle: "The 5-step process from signal to execution",
+    blocks: [
+      {
+        title: "Step 1: Direction Decision",
+        tag: "WHAT",
+        tagColor: "#dc2626",
+        content: "Your composite signal score determines direction. This is the output of your 30 alpha signals weighted and combined into a single number.",
+        example: `COMPOSITE SCORE CALCULATION:
+
+Signal Category          Weight    Score Range
+─────────────────────────────────────────────
+FII Flow Trend (5d)       20%     -1 to +1
+India VIX Regime          15%     -1 to +1
+Options OI Bias           15%     -1 to +1
+Futures Basis Direction   10%     -1 to +1
+PCR Level                 10%     -1 to +1
+US/Global Overnight       10%     -1 to +1
+Macro (USD/INR + Crude)   10%     -1 to +1
+Sentiment (NLP + Breadth) 10%     -1 to +1
+
+COMPOSITE = Weighted sum → Range: -1.0 to +1.0
+
+Score → Direction:
++0.5 to +1.0  →  STRONG BULLISH  → Buy Calls / Sell Puts / Bull Spreads
++0.2 to +0.5  →  MILD BULLISH    → Buy Calls / Bull Spreads
+-0.2 to +0.2  →  NEUTRAL         → Sell Straddles / Iron Condors
+-0.5 to -0.2  →  MILD BEARISH    → Buy Puts / Bear Spreads
+-1.0 to -0.5  →  STRONG BEARISH  → Buy Puts / Sell Calls / Bear Spreads
+
+RULE: If score is between -0.15 and +0.15, DO NOT TRADE directionally.
+Wait for clarity. The best trade is often no trade.`,
+      },
+      {
+        title: "Step 2: Instrument Selection",
+        tag: "HOW",
+        tagColor: "#2563eb",
+        content: "Based on direction + VIX regime + time to expiry, choose the right instrument. Not every signal should be traded with the same instrument.",
+        example: `INSTRUMENT DECISION MATRIX:
+
+                    VIX < 14         VIX 14-20        VIX > 20
+                    (Low Vol)        (Normal)         (High Vol)
+─────────────────────────────────────────────────────────────────
+STRONG            Buy OTM Calls    Buy ATM Calls    Buy ITM Calls
+BULLISH           (cheap premium)  (balanced)       (high delta)
+(+0.5 to +1.0)   or Sell Puts     or Bull Spread   or Bull Spread
+
+MILD              Bull Call        Bull Call         Bull Put
+BULLISH           Spread           Spread            Spread (credit)
+(+0.2 to +0.5)   (defined risk)   (balanced)       (collect premium)
+
+NEUTRAL           Short Straddle   Short Strangle    Iron Condor
+(-0.2 to +0.2)   (max premium)    (wider wings)    (defined risk)
+
+MILD              Bear Put         Bear Put          Bear Call
+BEARISH           Spread           Spread            Spread (credit)
+(-0.5 to -0.2)   (defined risk)   (balanced)       (collect premium)
+
+STRONG            Buy OTM Puts     Buy ATM Puts     Buy ITM Puts
+BEARISH           (cheap premium)  (balanced)       (high delta)
+(-1.0 to -0.5)   or Sell Calls    or Bear Spread   or Bear Spread
+
+KEY RULE: In HIGH VIX (>20), NEVER sell naked options.
+Always use spreads or buy options. Premium is rich but
+tail risk is enormous.`,
+      },
+      {
+        title: "Step 3: Strike Selection",
+        tag: "WHERE",
+        tagColor: "#0f766e",
+        content: "The specific strike you choose is determined by your OI data, expected move, and risk budget. This is where most traders fail — they pick random strikes.",
+        example: `STRIKE SELECTION IS COVERED IN DETAIL IN THE
+NEXT SECTION — "Strike Selection Engine"
+
+Quick summary of the approach:
+1. Calculate EXPECTED MOVE from straddle price
+2. Map OI WALLS (support/resistance strikes)
+3. Choose strike based on RISK/REWARD ratio
+4. Validate with GREEKS (Delta, Theta, Gamma)
+5. Confirm with LIQUIDITY (bid-ask spread, OI)`,
+      },
+      {
+        title: "Step 4: Entry Timing",
+        tag: "WHEN",
+        tagColor: "#ea580c",
+        content: "Even the right trade at the wrong time loses money. Your alpha signals have different optimal entry windows throughout the day and week.",
+        example: `ENTRY TIMING IS COVERED IN DETAIL IN THE
+"Market Entry Timing" SECTION
+
+Quick summary of optimal windows:
+• Pre-open analysis: 8:30 - 9:15 AM
+• Opening Range entry: 9:30 - 9:45 AM
+• Morning trend entry: 10:00 - 11:00 AM
+• Midday mean reversion: 12:30 - 1:30 PM
+• Afternoon institutional: 2:00 - 2:30 PM
+• Closing auction: 3:00 - 3:15 PM`,
+      },
+      {
+        title: "Step 5: Position Sizing",
+        tag: "HOW MUCH",
+        tagColor: "#7c3aed",
+        content: "Final step — how many lots. Determined by signal confidence, VIX regime, and risk budget.",
+        example: `POSITION SIZE FORMULA:
+
+Max Risk Per Trade = Capital × Risk% × Confidence Multiplier
+Lots = Max Risk / (Stop Loss in Points × Lot Size × Lot Value)
+
+Example:
+Capital: ₹50,00,000
+Risk %: 1% = ₹50,000
+Confidence Multiplier: 0.8 (composite score = +0.4, moderate)
+Adjusted Risk: ₹50,000 × 0.8 = ₹40,000
+
+Stop Loss: 80 points (from ATR-based stop)
+Nifty Lot Size: 65
+Risk per Lot: 80 × 65 = ₹5,200
+
+Max Lots: ₹40,000 / ₹5,200 = 7.7 → 7 lots
+
+VIX Adjustment:
+VIX < 14: allow 7 lots (full)
+VIX 14-20: allow 5 lots (75%)
+VIX > 20: allow 3 lots (50%)
+
+NEVER exceed the VIX-adjusted limit. Ever.`,
+      },
+    ],
+  },
+  {
+    id: "strike",
+    icon: "🎯",
+    name: "Strike Selection Engine",
+    color: "#dc2626",
+    accent: "#fca5a5",
+    bg: "#fef2f2",
+    subtitle: "Exact rules for choosing the right strike price",
+    blocks: [
+      {
+        title: "Method 1: Expected Move Strike Selection",
+        tag: "PRIMARY METHOD",
+        tagColor: "#dc2626",
+        content: "Use the ATM straddle price to calculate the market's expected move, then select strikes relative to this range. This is how professional options traders think.",
+        example: `STEP-BY-STEP:
+
+1. GET EXPECTED MOVE:
+   ATM Straddle Price = ATM Call + ATM Put
+   Example: Nifty at 22,500
+   22,500 CE = ₹180, 22,500 PE = ₹170
+   Straddle = ₹350
+
+   Expected Move = Straddle × 0.85 (for weekly)
+   = ₹350 × 0.85 = ±298 points
+   Expected Range: 22,202 to 22,798
+
+2. STRIKE SELECTION BY STRATEGY:
+
+   BUYING CALLS (Bullish):
+   ┌─────────────────────────────────────────────────┐
+   │ Aggressive: ATM (22,500 CE)                     │
+   │   Delta: ~0.50, Cost: ₹180, Breakeven: 22,680  │
+   │   Best when: Strong signal (+0.6+), VIX rising  │
+   │                                                  │
+   │ Moderate: 1st OTM (22,600 CE)                   │
+   │   Delta: ~0.40, Cost: ₹130, Breakeven: 22,730  │
+   │   Best when: Moderate signal, good risk/reward   │
+   │                                                  │
+   │ Conservative: 0.5× Expected Move OTM (22,650 CE)│
+   │   Delta: ~0.35, Cost: ₹100, Breakeven: 22,750  │
+   │   Best when: Low VIX, want leveraged exposure    │
+   └─────────────────────────────────────────────────┘
+
+   SELLING OPTIONS (Neutral / Income):
+   ┌─────────────────────────────────────────────────┐
+   │ Sell strikes OUTSIDE the expected move           │
+   │                                                  │
+   │ Short Strangle:                                  │
+   │   Sell 22,800 CE (above expected +298)           │
+   │   Sell 22,200 PE (below expected -298)           │
+   │   Combined premium: ~₹80-100                     │
+   │   Probability of profit: ~68%                    │
+   │                                                  │
+   │ Wider (safer):                                   │
+   │   Sell 22,900 CE / Sell 22,100 PE                │
+   │   = 1.3× expected move away                      │
+   │   Premium: ~₹40-50, Probability: ~80%            │
+   └─────────────────────────────────────────────────┘
+
+3. RULE: Never sell a strike INSIDE the expected move range.
+   That's where the market expects price to reach.`,
+      },
+      {
+        title: "Method 2: OI-Based Strike Selection",
+        tag: "NIFTY SPECIFIC",
+        tagColor: "#0f766e",
+        content: "Use the option chain's OI distribution to select strikes at institutional support/resistance levels. This is your India-specific edge — no other market has this level of options activity.",
+        example: `OI-BASED STRIKE RULES:
+
+BUYING CALLS (Target = Resistance Above):
+1. Find highest CALL OI strike above current price → that's RESISTANCE
+2. Your PROFIT TARGET = 10-20 points BELOW this call OI wall
+3. Strike selection: buy a call that reaches 1.5× cost at your target
+
+Example: Nifty at 22,500
+Highest Call OI: 22,800 strike (12L contracts)
+Target: 22,780 (just below the wall)
+Expected move: 280 points
+Buy: 22,550 CE at ₹120
+At target (22,780): this call = ~₹230 → 1.9× return ✓
+
+BUYING PUTS (Target = Support Below):
+1. Find highest PUT OI strike below current price → that's SUPPORT
+2. Your PROFIT TARGET = 10-20 points ABOVE this put OI wall
+3. Strike selection: buy a put that reaches 1.5× cost at your target
+
+Example:
+Highest Put OI: 22,200 strike (15L contracts)
+Target: 22,220 (just above the wall)
+Buy: 22,450 PE at ₹110
+At target (22,220): this put = ~₹230 → 2.1× return ✓
+
+SELLING OPTIONS (Place strikes at OI walls):
+1. Sell CALLS at or above highest Call OI strike (resistance)
+2. Sell PUTS at or below highest Put OI strike (support)
+3. These walls act as your defense — option writers defend them
+
+Example Short Strangle:
+Sell 22,800 CE (at call OI wall — 12L contracts defend this)
+Sell 22,200 PE (at put OI wall — 15L contracts defend this)
+
+KEY: Monitor OI wall shifts intraday. If the wall MOVES,
+your strike selection may need adjustment.
+OI shifting up = resistance rising = more bullish.
+OI shifting down = support breaking = more bearish.`,
+      },
+      {
+        title: "Method 3: Greeks-Based Strike Selection",
+        tag: "PRECISION",
+        tagColor: "#2563eb",
+        content: "Use option Greeks to select strikes that match your exact risk/reward profile. Delta for directional exposure, Theta for time decay, Gamma for acceleration.",
+        example: `DELTA-BASED SELECTION:
+
+Your composite signal score maps to target delta:
+
+Score +0.8 to +1.0 → Delta 0.60-0.70 (deep ITM calls)
+  "I'm very sure it's going up — want high participation"
+Score +0.5 to +0.8 → Delta 0.45-0.55 (ATM calls)
+  "Confident bullish — balanced risk/reward"
+Score +0.2 to +0.5 → Delta 0.25-0.35 (1-2 strikes OTM)
+  "Mildly bullish — leveraged bet, accept lower probability"
+Score -0.2 to +0.2 → Delta ~0 (sell ATM straddle)
+  "Neutral — collect theta, no directional bias"
+
+THETA CONSIDERATIONS:
+Weekly options (0-5 DTE):
+  Theta decay accelerates exponentially
+  • Buying: prefer ATM or slightly ITM (slower decay)
+  • Selling: prefer OTM (maximum theta, limited gamma risk)
+
+Monthly options (6-30 DTE):
+  Theta more linear, less punishing for buyers
+  • Buying: OTM is OK (more time for move to happen)
+  • Selling: can sell closer to ATM (theta > gamma)
+
+GAMMA CONSIDERATIONS:
+  High gamma (ATM, near expiry) = big P&L swings
+  • Buying high gamma: great if you're right, terrible if wrong
+  • Selling high gamma: THE most dangerous position in options
+  
+  RULE: Never sell ATM options with < 2 DTE
+  Gamma risk is asymmetric and can destroy your account
+
+VEGA CONSIDERATIONS:
+  If you expect VIX to DROP → sell options (benefit from IV crush)
+  If you expect VIX to RISE → buy options (benefit from IV expansion)
+  
+  Pre-event (RBI, Budget): Vega is high → buying is expensive
+  Post-event: Vega crushes → selling post-event is better than pre-event`,
+      },
+      {
+        title: "Method 4: Spread Strike Selection",
+        tag: "DEFINED RISK",
+        tagColor: "#ea580c",
+        content: "For spreads (bull call, bear put, iron condor), strike selection follows specific rules based on expected move, OI, and max profit/loss ratio.",
+        example: `BULL CALL SPREAD:
+Buy lower strike + Sell higher strike (same expiry)
+
+Strike Width Selection:
+┌────────────────────────────────────────────────────────┐
+│ Narrow (50 pts): 22,500/22,550                         │
+│   Cost: ₹25-30  Max Profit: ₹20-25  Risk/Reward: 1:1  │
+│   Use when: moderate confidence, want cheap entry       │
+│                                                         │
+│ Medium (100 pts): 22,500/22,600                         │
+│   Cost: ₹45-55  Max Profit: ₹45-55  Risk/Reward: 1:1  │
+│   Use when: standard play, balanced profile             │
+│                                                         │
+│ Wide (200 pts): 22,500/22,700                           │
+│   Cost: ₹80-100  Max Profit: ₹100-120  Risk/Reward:1:1│
+│   Use when: high confidence, expect big move            │
+└────────────────────────────────────────────────────────┘
+
+Long Strike: ATM or 1st OTM (buy at or near current price)
+Short Strike: AT or NEAR the OI resistance wall
+
+Example: Nifty 22,500, highest Call OI at 22,700
+Buy 22,500 CE at ₹180
+Sell 22,700 CE at ₹95
+Net cost: ₹85 (max loss)
+Max profit: ₹200 - ₹85 = ₹115 (if Nifty > 22,700)
+Risk/Reward: 1:1.35 ✓
+
+IRON CONDOR:
+Sell Call + Buy higher Call + Sell Put + Buy lower Put
+
+Wing Selection:
+Short strikes: at or near OI walls (support/resistance)
+Long strikes (protection): 50-100 points beyond short strikes
+Keep credit received > 33% of total width for positive expectancy
+
+Example: Nifty 22,500
+Sell 22,800 CE / Buy 22,900 CE (100pt wide call side)
+Sell 22,200 PE / Buy 22,100 PE (100pt wide put side)
+Credit: ₹35 per side = ₹70 total
+Max risk: ₹100 - ₹70 = ₹30 per side
+Probability of profit: ~70% (both sides OTM at expiry)`,
+      },
+      {
+        title: "Method 5: Liquidity Filter",
+        tag: "EXECUTION",
+        tagColor: "#7c3aed",
+        content: "After selecting the ideal strike, you MUST verify it's tradeable. Illiquid strikes will eat your edge in slippage and wide bid-ask spreads.",
+        example: `LIQUIDITY CHECKLIST (All must pass):
+
+✓ Bid-Ask Spread: < ₹3 for ATM, < ₹5 for OTM
+  Wider than this = too much slippage, avoid
+
+✓ Open Interest: > 1 Lakh contracts
+  Below this = thin market, hard to exit in panic
+
+✓ Volume: > 10,000 contracts today
+  Below this = may not find counterparty
+
+✓ Strike Proximity: Within ±500 points of current Nifty
+  Beyond this = very illiquid except for hedging
+
+✓ Expiry: Current week or current month only
+  Next week/month options have lower liquidity
+
+PRACTICAL NIFTY STRIKE LIQUIDITY MAP:
+  
+  Most liquid: ATM ± 200 points (weekly)
+  Liquid: ATM ± 400 points (weekly), ATM ± 500 (monthly)
+  Acceptable: ATM ± 500 (weekly), ATM ± 800 (monthly)
+  Avoid: Beyond these ranges
+
+If your "ideal" strike fails liquidity check:
+→ Move to the NEAREST strike that passes ALL checks
+→ Accept slightly sub-optimal positioning for better execution
+→ A liquid mediocre strike beats an illiquid perfect strike`,
+      },
+      {
+        title: "Complete Strike Selection Flowchart",
+        tag: "DECISION TREE",
+        tagColor: "#dc2626",
+        content: "Put it all together — here's the exact decision process for every trade:",
+        example: `START → What is your composite signal score?
+
+│
+├─ Score > +0.5 (STRONG BULLISH)
+│   ├─ VIX < 14: Buy 1st OTM Call (Delta ~0.40)
+│   │   └─ Strike: nearest round number above Nifty
+│   ├─ VIX 14-20: Buy ATM Call or Bull Call Spread
+│   │   └─ Spread: ATM / OI resistance wall
+│   └─ VIX > 20: Bull Call Spread only (defined risk)
+│       └─ Spread: ATM / 1.5× expected move
+│
+├─ Score +0.2 to +0.5 (MILD BULLISH)
+│   ├─ VIX < 16: Bull Call Spread (100pt width)
+│   │   └─ Long: 1st OTM, Short: at Call OI wall
+│   └─ VIX > 16: Bull Put Spread (credit spread)
+│       └─ Short: at Put OI wall, Long: 100pt below
+│
+├─ Score -0.2 to +0.2 (NEUTRAL)
+│   ├─ VIX < 14: Short Straddle (ATM)
+│   │   └─ Strike: current Nifty rounded to nearest 50
+│   ├─ VIX 14-20: Short Strangle (OTM)
+│   │   └─ Strikes: outside expected move range
+│   └─ VIX > 20: Iron Condor (defined risk)
+│       └─ Short strikes: at OI walls, Wings: +100pt
+│
+├─ Score -0.5 to -0.2 (MILD BEARISH)
+│   ├─ VIX < 16: Bear Put Spread (100pt width)
+│   │   └─ Long: 1st OTM put, Short: at Put OI wall
+│   └─ VIX > 16: Bear Call Spread (credit spread)
+│       └─ Short: at Call OI wall, Long: 100pt above
+│
+└─ Score < -0.5 (STRONG BEARISH)
+    ├─ VIX < 14: Buy 1st OTM Put (Delta ~0.40)
+    ├─ VIX 14-20: Buy ATM Put or Bear Put Spread
+    └─ VIX > 20: Bear Put Spread only (defined risk)
+
+FINAL CHECK: Does selected strike pass liquidity filter?
+  YES → Execute
+  NO → Move to nearest liquid strike and re-validate`,
+      },
+    ],
+  },
+  {
+    id: "timing",
+    icon: "⏱️",
+    name: "Market Entry Timing Engine",
+    color: "#0f766e",
+    accent: "#5eead4",
+    bg: "#f0fdfa",
+    subtitle: "When to enter based on signal type and market session",
+    blocks: [
+      {
+        title: "The Nifty Trading Day — Session Map",
+        tag: "OVERVIEW",
+        tagColor: "#0f766e",
+        content: "The Indian market day has distinct phases, each with different characteristics. Your signals work differently in each phase. Matching signal to session is critical.",
+        example: `THE NIFTY TRADING DAY:
+
+08:30-09:00  PRE-MARKET ANALYSIS
+  ├─ Review: GIFT Nifty, US close, Asia morning
+  ├─ Check: FII/DII data (published prev night)
+  ├─ Compute: overnight signal score
+  └─ Decision: Set day's direction bias & max exposure
+
+09:00-09:08  PRE-OPEN SESSION (NSE)
+  ├─ Order matching begins
+  ├─ Indicative price visible
+  └─ Large gap visible → adjust plan
+
+09:15-09:30  OPENING VOLATILITY ⚡ (Do NOT trade yet)
+  ├─ First 15 minutes = chaos
+  ├─ Spreads wide, fake moves, gap reactions
+  ├─ ONLY observe — record Opening Range high/low
+  └─ Exception: if GIFT gap > 1%, scale into direction at 9:17
+
+09:30-09:45  OPENING RANGE BREAKOUT WINDOW 🎯
+  ├─ Opening Range (OR) is set
+  ├─ Break above OR high → long entry signal
+  ├─ Break below OR low → short entry signal
+  └─ Confirm with: volume surge + futures basis direction
+
+09:45-11:30  MORNING TREND SESSION 📈
+  ├─ Strongest trending phase of the day
+  ├─ Momentum signals work best here
+  ├─ FII activity is highest in morning
+  ├─ Best window for: directional trades, breakout entries
+  └─ If no trend by 11:00 → likely a range day
+
+11:30-12:30  MIDDAY LULL 😴
+  ├─ Lowest volume of the day
+  ├─ Avoid new entries (low conviction)
+  ├─ Use for: position review, stop adjustments
+  └─ Exception: if strong trend is running, let it run
+
+12:30-14:00  AFTERNOON REVERSAL / MEAN REVERSION 🔄
+  ├─ VWAP reversion trades work best here
+  ├─ If morning overextended → fade the move
+  ├─ Mean reversion signals (RSI, Z-score) most effective
+  ├─ Best window for: VWAP reversion, range trades
+  └─ Compute: % of daily ATR already used → if >80%, fade
+
+14:00-14:45  INSTITUTIONAL AFTERNOON SESSION 💰
+  ├─ DII and late FII activity picks up
+  ├─ Sector rotation visible in last 2 hours
+  ├─ Good for: trend continuation confirmation
+  └─ If morning trend reversed by 2 PM → trend is dead
+
+14:45-15:00  PRE-CLOSE POSITIONING ⚡
+  ├─ Institutional end-of-day positioning
+  ├─ Stop hunting common in this window
+  ├─ Tight stops get hit → widen stops or exit before 2:45
+  └─ Last chance to enter overnight positions
+
+15:00-15:30  CLOSING SESSION
+  ├─ NSE closing auction mechanism
+  ├─ Large institutional orders hit here
+  ├─ Good for: gauging tomorrow's opening bias
+  └─ Closing imbalance predicts next day gap direction`,
+      },
+      {
+        title: "Signal → Optimal Entry Window Mapping",
+        tag: "CORE MAPPING",
+        tagColor: "#dc2626",
+        content: "Each of your 30 signals has an OPTIMAL time window when it's most actionable. Entering at the wrong time wastes the signal's edge.",
+        example: `SIGNAL → BEST ENTRY TIME:
+
+PRE-MARKET SIGNALS (trade at 9:30-9:45 AM):
+#1  FII Cash Flow          → sets morning bias
+#5  GIFT Nifty Gap          → trade the gap at open
+#9  US Overnight Return     → absorbed at opening
+#10 Futures OI+Price        → confirms overnight positioning
+
+MORNING SESSION (9:45-11:30 AM):
+#3  Options OI Distribution → OI walls set for the day by 10 AM
+#4  Futures Basis           → real-time, strongest in morning
+#7  FII L/S Ratio           → FII activity highest in morning
+#18 Opening Range Breakout  → signal fires at 9:30, enter by 9:45
+#24 Sector Rotation         → rotation visible by 10:30 AM
+
+MIDDAY / AFTERNOON (12:30-2:30 PM):
+#12 RSI Multi-Timeframe     → mean reversion entries in afternoon
+#13 VWAP Distance           → VWAP reversion strongest 12:30-2 PM
+#17 Nifty Z-Score           → swing entries any time, but afternoon
+                               gives you same-day confirmation
+
+ALL-DAY SIGNALS (enter when signal fires):
+#2  India VIX Regime        → continuous regime monitoring
+#6  PCR Level               → real-time, enter on extreme readings
+#8  Max Pain                → strongest in last 3 days of expiry
+#11 GEX                     → determines if trending or mean-reverting
+#19 OI Unwinding            → real-time, enter on classification shift
+
+END-OF-DAY / OVERNIGHT (2:30-3:30 PM):
+#14 DII Cash Flow           → confirmed by closing data
+#15 USD/INR Trend           → carry trade overnight positioning
+#16 Crude Oil Trend         → overnight macro positioning
+#20 US 10Y Yield            → overnight macro positioning
+#25 Credit Spreads          → slow-moving, end-of-day review
+
+EVENT-DRIVEN (specific timing):
+#22 Expiry Pin Risk         → Monday 2 PM for Tuesday expiry
+#28 Earnings Beat/Miss      → within 15 min of results announcement
+#30 Advance Tax Date        → T-3 days before tax date`,
+      },
+      {
+        title: "Intraday Entry Tactics — Minute-by-Minute",
+        tag: "EXECUTION DETAIL",
+        tagColor: "#2563eb",
+        content: "Once you've decided WHAT and WHEN, these are the exact entry tactics. The difference between a good trade and a great trade is often 2-3 minutes of timing.",
+        example: `TACTIC 1: OPENING RANGE BREAKOUT ENTRY (9:30-9:45)
+
+Wait for 9:30 AM. Record 15-min candle high/low.
+IF price breaks above OR high on CLOSING basis (5-min candle):
+  AND futures basis is positive
+  AND volume > 1.5× average first-15-min volume
+  → ENTER LONG at next candle open
+  Stop: OR low - 10 points
+  Target: OR high + (OR high - OR low) × 1.5
+
+IF first breakout fails (reverses within 10 min):
+  → CANCEL. Do not re-enter same direction.
+  Wait for opposite breakout or skip morning trade.
+
+─────────────────────────────────────────────────────
+
+TACTIC 2: VWAP REVERSION ENTRY (12:30-2:00)
+
+Conditions:
+  Nifty > 0.4% ABOVE VWAP (or below for shorts)
+  RSI(14) on 15-min > 70 (or < 30)
+  India VIX < 18 (mean-reversion works in low vol)
+  Day is NOT a trending day (ADX < 25 on 15-min)
+
+Entry:
+  Wait for FIRST 5-min candle to close back toward VWAP
+  → Enter in VWAP direction at candle close
+  Stop: Day's high + 10 points (or day's low - 10)
+  Target: VWAP level
+
+Why afternoon: Morning trend exhausts by midday.
+Institutions rebalance toward VWAP in PM session.
+
+─────────────────────────────────────────────────────
+
+TACTIC 3: OI SHIFT ENTRY (Any time)
+
+When you detect a SIGNIFICANT OI shift intraday:
+  Put OI at 22,200 drops from 15L to 8L in 2 hours
+  = Support is being ABANDONED by option writers
+
+Entry:
+  → Enter SHORT (or close longs) immediately
+  Don't wait for price to break — OI tells you BEFORE price moves
+  Stop: Above the new nearest Put OI wall
+  Target: Next Put OI wall below
+
+This is the most ALPHA-RICH entry signal.
+OI moves LEAD price moves by 15-45 minutes.
+
+─────────────────────────────────────────────────────
+
+TACTIC 4: FII FLOW CONFIRMATION ENTRY (Next morning)
+
+FII data published at 8:30 PM.
+IF FII bought > ₹2000cr AND your composite score > +0.3:
+  → Enter LONG at 9:35 AM next day (after opening volatility)
+  Use: Bull Call Spread (defined risk)
+  Stop: if FII sells next day OR Nifty falls > 0.5% from entry
+
+IF FII sold > ₹2000cr AND composite score < -0.3:
+  → Enter SHORT at 9:35 AM next day
+  Use: Bear Put Spread
+  Stop: if FII buys next day
+
+Hold for: 1-5 sessions (swing trade)
+
+─────────────────────────────────────────────────────
+
+TACTIC 5: EXPIRY DAY PIN TRADE (Tuesday)
+
+On Monday at 2:00 PM, compute:
+  Max pain strike for Tuesday expiry
+  Highest OI strike (both call and put)
+  GEX sign (positive = pinning likely)
+
+IF max pain AND highest OI both at same level (e.g., 22,500):
+  AND Nifty is within 150 points of this level
+  AND GEX is positive
+  → Sell ATM straddle at the pin target on Monday 2:30 PM
+  → Or sell Tuesday morning at 9:30 AM
+
+Exit: Tuesday by 2:00 PM (before last-hour gamma spike)
+Max loss: straddle price × 0.5 (set as stop)
+Win rate: ~60-65% historically`,
+      },
+      {
+        title: "Day-of-Week Entry Rules",
+        tag: "WEEKLY PATTERN",
+        tagColor: "#ea580c",
+        content: "Each day of the week has different optimal strategies due to the weekly expiry cycle and institutional behavior patterns.",
+        example: `MONDAY:
+  Character: Positioning day for Tuesday expiry.
+  Best for: Expiry plays — sell premium for Tuesday decay
+  Strategy: Short strangle/straddle for Tuesday, set up pin trades
+  Avoid: Buying weekly options (theta decay accelerating)
+  Signal priority: Max pain, OI walls, GEX, pin risk score
+  Entry window: 2:00-3:00 PM (position for Tuesday expiry)
+
+TUESDAY (Weekly Expiry):
+  Character: Gamma day. Wild swings possible. Theta crush.
+  Best for: Quick scalps, option selling at 9:30 (if sold Monday)
+  Strategy: Close Monday's sells by 2 PM. Buy only for scalps.
+  Avoid: Holding any short options past 2:30 PM (gamma explosion)
+  Signal priority: Pin risk, OI unwinding, intraday OFI
+  Entry window: 9:15-9:30 AM (capture morning move, exit by noon)
+
+WEDNESDAY:
+  Character: Fresh weekly series starts. New OI being built.
+  Best for: Directional trades based on expiry outcome + FII data
+  Strategy: Buy options (premium is cheapest for the week)
+  Avoid: Selling options (insufficient premium for 5 DTE risk)
+  Signal priority: FII Tuesday data, post-expiry OI reset, GIFT gap
+  Entry window: 9:45-11:00 AM after opening noise settles
+
+THURSDAY:
+  Character: Trend day. Strongest intraday trends statistically.
+  Best for: Momentum trades, breakout entries
+  Strategy: Directional options or spreads
+  Avoid: Mean reversion (trends persist on Thursdays)
+  Signal priority: OI buildup from Wednesday, futures basis, sector rotation
+  Entry window: 9:30-10:00 AM (ride the morning trend)
+
+FRIDAY:
+  Character: Mid-week positioning. Weekend risk consideration.
+  Best for: Swing trade entries, weekend hedging
+  Strategy: Directional spreads for early next week
+  Avoid: Large new naked positions (weekend gap risk)
+  Signal priority: FII weekly cumulative, macro events next week
+  Entry window: 2:00-3:00 PM (position for Monday)`,
+      },
+      {
+        title: "Expiry Week Special Timing",
+        tag: "NIFTY SPECIFIC",
+        tagColor: "#7c3aed",
+        content: "Monthly expiry (last Tuesday) has different dynamics than weekly expiry. Larger OI, more institutional activity, and rollover adds complexity.",
+        example: `MONTHLY EXPIRY WEEK TIMING:
+
+T-4 (Friday before expiry week):
+  └─ Rollover begins. Track rollover % and cost.
+     If rollover > 70% by Monday = strong carry
+     If rollover < 60% = forced liquidation coming
+
+T-3 (Monday):
+  └─ Peak rollover day. Large moves possible from
+     short covering / long unwinding.
+     Best entry: ride the rollover flow direction.
+     If heavy short covering → buy dips.
+     Also: positioning day for Tuesday monthly expiry.
+     Max pain gravity intensifies.
+
+T-2 (Tuesday, monthly expiry):
+  └─ MOST IMPORTANT DAY OF THE MONTH
+     All monthly OI settles. Gamma risk is extreme.
+     09:15-10:00: Capture opening direction.
+     10:00-12:00: Rollover completion.
+     12:00-14:00: Index gravitates to max pain.
+     14:00-14:30: Close ALL monthly positions.
+     14:30-15:30: Do not trade. Let settlement happen.
+
+T+1 (Wednesday, new monthly series):
+  └─ Fresh positioning begins.
+     OI is light → big moves possible.
+     Wait until 10:30 AM to see new OI build.
+     Good day for directional trades (low premium).
+
+CRITICAL: Never hold short options into monthly
+expiry day after 2 PM. The gamma risk is not worth
+any remaining premium.`,
+      },
+      {
+        title: "Complete Entry Decision Checklist",
+        tag: "PRE-TRADE RITUAL",
+        tagColor: "#dc2626",
+        content: "Before EVERY trade, run through this checklist. Print it. Tape it to your screen. No trade enters without all boxes checked.",
+        example: `PRE-TRADE CHECKLIST (ALL must be YES):
+
+DIRECTION:
+□ Composite signal score calculated? Score: _____
+□ Direction clear (not in -0.15 to +0.15 dead zone)?
+□ At least 3 of your top 10 signals agree?
+
+INSTRUMENT:
+□ VIX regime identified? Zone: _____
+□ Instrument selected from decision matrix?
+□ Strategy appropriate for VIX level?
+
+STRIKE:
+□ Expected move calculated from straddle?
+□ OI walls identified (support/resistance strikes)?
+□ Strike passes liquidity filter (spread, OI, volume)?
+□ Greeks acceptable (delta matches conviction)?
+
+TIMING:
+□ Is this the RIGHT session for this signal type?
+□ Not in first 15 min (unless gap trade)?
+□ Not in 11:30-12:30 dead zone?
+□ If expiry day: aware of gamma timing?
+
+SIZE:
+□ Risk per trade < 1-2% of capital?
+□ ATR-adjusted position size calculated?
+□ VIX-adjusted lot limit applied?
+□ Total portfolio exposure within regime limit?
+
+STOP LOSS:
+□ Stop loss SET before entry (not after)?
+□ Stop based on OI wall / ATR / structure (not random)?
+□ Risk/reward ratio > 1:1.5 minimum?
+
+EXIT PLAN:
+□ Profit target defined?
+□ Time stop defined?
+□ Know which signal invalidates the trade?
+
+If ANY box is unchecked → DO NOT TRADE.
+Come back when all boxes are checked.
+Discipline is the only edge that never decays.`,
+      },
+    ],
+  },
+  {
+    id: "examples",
+    icon: "📋",
+    name: "Live Trade Examples",
+    color: "#ea580c",
+    accent: "#fdba74",
+    bg: "#fff7ed",
+    subtitle: "Complete signal-to-execution walkthroughs",
+    blocks: [
+      {
+        title: "Example 1: Morning Bullish Breakout",
+        tag: "DIRECTIONAL LONG",
+        tagColor: "#0f766e",
+        content: "A typical morning trade using FII flow + gap + OI signals for a directional long entry.",
+        example: `SCENARIO: Thursday morning
+
+PRE-MARKET (8:30 AM):
+  FII bought ₹3,200cr yesterday (strong)       → +1
+  GIFT Nifty showing +0.6% gap                  → +1
+  US S&P 500 closed +0.8%                       → +1
+  India VIX at 13.2 (low, normal regime)         → +1
+  FII L/S ratio: 2.8 (bullish)                  → +1
+  PCR: 1.1 (mildly bullish)                     → +0.5
+  USD/INR: stable at 83.2                       → 0
+  Crude: $82, stable                            → 0
+  
+  Composite Score: +0.68 → STRONG BULLISH
+
+OPENING (9:15 AM):
+  Nifty opens at 22,580 (gap up from 22,450 close)
+  Opening Range (9:15-9:30): High 22,610, Low 22,565
+  Futures basis: +12 points (positive, bullish)
+
+STRIKE SELECTION:
+  ATM Straddle: 22,600 CE ₹160 + 22,600 PE ₹155 = ₹315
+  Expected Move: ±268 points (22,332 to 22,868)
+  Highest Call OI: 22,800 (resistance)
+  Highest Put OI: 22,400 (support — below gap)
+  
+  Strategy: Strong bullish + Low VIX → Buy 1st OTM Call
+  Strike: 22,650 CE
+  Premium: ~₹120
+  Delta: 0.42
+  Breakeven: 22,770
+
+ENTRY (9:35 AM):
+  Nifty breaks above OR high 22,610 on 5-min close
+  Volume: 1.8× average → confirmed
+  Futures basis: still positive → confirmed
+  → BUY 22,650 CE at ₹125
+
+POSITION SIZE:
+  Capital: ₹50L, Risk: 1% = ₹50,000
+  Confidence: 0.85 (strong score)
+  Max risk: ₹50,000 × 0.85 = ₹42,500
+  Stop: if 22,650 CE drops to ₹75 (₹50 loss per lot)
+  Lots: ₹42,500 / (₹50 × 65) = 13 lots → round to 13 lots
+
+MANAGEMENT:
+  Stop Loss: ₹75 (CE premium) OR Nifty below 22,540 (OR low)
+  Target 1: ₹180 (exit 50% → +₹55/lot)
+  Target 2: ₹230 (exit remaining → near OI wall 22,800)
+  Time stop: if not profitable by 12:30 PM, exit
+
+OUTCOME:
+  Nifty trends to 22,720 by 11:30 AM
+  22,650 CE reaches ₹195
+  Exit 50% at ₹190 → profit: ₹65 × 65 × 6 lots = ₹25,350
+  Trail remaining stop to ₹150
+  Nifty hits 22,760 by 2 PM
+  22,650 CE at ₹220
+  Exit remaining → profit: ₹95 × 65 × 7 lots = ₹43,225
+  
+  TOTAL PROFIT: ₹68,575 on ₹1,05,625 deployed (65% return)`,
+      },
+      {
+        title: "Example 2: Expiry Day Pin Trade",
+        tag: "NEUTRAL INCOME",
+        tagColor: "#7c3aed",
+        content: "A Monday-Tuesday pin trade using max pain, OI concentration, and GEX signals.",
+        example: `SCENARIO: Monday afternoon → Tuesday expiry
+
+MONDAY 2:00 PM ANALYSIS:
+  Nifty at: 22,480
+  Weekly Max Pain: 22,500
+  Highest Call OI: 22,500 (10L contracts)
+  Highest Put OI: 22,500 (12L contracts)
+  → OI concentrated at SAME level as max pain = STRONG PIN
+  
+  GEX: Positive → dealers suppress moves → pin likely
+  Pin Risk Score: 82/100 → HIGH
+  India VIX: 12.8 (low → range-bound likely)
+  Distance to pin: only 20 points → already close
+  
+  Composite view: Neutral score, strong pin probability
+
+STRATEGY: Sell ATM Straddle at pin target
+
+STRIKE SELECTION:
+  Sell 22,500 CE at ₹55 (Monday 2:30 PM)
+  Sell 22,500 PE at ₹60 (Monday 2:30 PM)
+  Total credit: ₹115 per lot
+  Max profit: ₹115 × 65 = ₹7,475 per lot (if pinned at 22,500)
+  
+  Protection: Buy 22,350 PE at ₹15 + Buy 22,650 CE at ₹12
+  Net credit after protection: ₹115 - ₹27 = ₹88 per lot
+  Max loss: ₹150 - ₹88 = ₹62 per lot (with protection wings)
+
+POSITION SIZE:
+  Risk per trade: ₹40,000
+  Max loss per lot: ₹62 × 65 = ₹4,030
+  Max lots: ₹40,000 / ₹4,030 = 9 lots
+
+ENTRY: Monday 2:30 PM
+
+TUESDAY MANAGEMENT:
+  09:15 AM: Nifty opens at 22,510 → within range ✓
+  Monitor: Does OI still support pin? Is GEX still positive?
+  
+  11:00 AM: Nifty at 22,530 → straddle value: ₹50
+  Paper profit: ₹88 - ₹50 = ₹38 per lot
+  
+  01:00 PM: Nifty at 22,490 → straddle value: ₹25
+  Paper profit: ₹88 - ₹25 = ₹63 per lot
+  
+  EXIT at 2:00 PM (RULE: exit before 2:30 on expiry day)
+  Straddle value at 2:00 PM: ₹10
+  Profit: ₹88 - ₹10 = ₹78 per lot
+  
+  TOTAL PROFIT: ₹78 × 65 × 9 lots = ₹45,630
+  Return: 31% on risk in 24 hours
+  
+  THIS TRADE WORKS ~60-65% OF WEEKS when pin conditions are met.`,
+      },
+      {
+        title: "Example 3: Macro-Driven Defensive Entry",
+        tag: "BEARISH HEDGE",
+        tagColor: "#dc2626",
+        content: "When multiple macro signals flash red, here's how to position defensively with precise timing.",
+        example: `SCENARIO: Risk-off event building
+
+SIGNAL DETERIORATION OVER 3 DAYS:
+  Day 1: US 10Y yield spikes 15bps to 4.6%        → -0.5
+  Day 2: Crude jumps to $92 (+4% in 2 days)         → -0.5
+  Day 3: USD/INR breaks above 84.0                   → -1
+  Day 3: FII sells ₹4,500cr in cash market           → -1
+  Day 3: India VIX jumps from 13 to 17 (+30%)        → -0.5
+  Credit spreads: widening 10bps this week            → -0.5
+  
+  Composite Score: -0.65 → STRONG BEARISH
+  VIX: 17 → ELEVATED REGIME → 75% max exposure
+
+TIMING DECISION:
+  Multiple slow-moving macro signals confirming
+  → This is NOT an intraday trade
+  → This is a swing hedge (hold 5-10 sessions)
+  → Enter at Friday 2:30 PM for weekend protection
+
+STRATEGY: VIX elevated → Bear Put Spread (defined risk)
+  
+STRIKE SELECTION:
+  Nifty at: 22,200 (already down 300 pts this week)
+  Monthly expiry: 18 days out
+  Expected Move (monthly straddle): ±450 points
+  Highest Put OI (monthly): 21,800
+  
+  Buy 22,200 PE (ATM) at ₹280
+  Sell 21,800 PE (at put OI wall) at ₹120
+  Net cost: ₹160 per lot
+  Max profit: ₹400 - ₹160 = ₹240 per lot (if Nifty < 21,800)
+  Risk/Reward: 1:1.5 ✓
+  Breakeven: 22,040
+
+POSITION SIZE:
+  Hedge mode: use 50% of normal risk budget
+  Risk: ₹25,000
+  Max loss per lot: ₹160 × 65 = ₹10,400
+  Lots: ₹25,000 / ₹10,400 = 2 lots
+  
+  ALSO: Reduce all existing long exposure by 40%
+
+EXIT PLAN:
+  Profit target: Nifty reaches 21,850 → close at ₹350 (₹190 profit)
+  Stop: Composite score turns positive (> +0.2) → close at market
+  Time stop: 10 sessions → close regardless
+  
+  OUTCOME (hypothetical):
+  Over next 7 sessions, Nifty drops to 21,750
+  Bear put spread: worth ₹380
+  Profit: ₹380 - ₹160 = ₹220 per lot
+  Total: ₹220 × 65 × 2 lots = ₹28,600
+  Plus: avoided losses on reduced long exposure`,
+      },
+    ],
+  },
+];
+
+
+// ─── NAV ───
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-' + tab.dataset.page).classList.add('active');
+  });
+});
+
+function esc(s) { 
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); 
+}
+
+function badge(level) {
+  const map = { high: ['CORE','badge-high'], medium: ['IMPORTANT','badge-medium'], low: ['SUPPLEMENTARY','badge-low'] };
+  const [label, cls] = map[level] || ['',''];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function tagBadge(text, color) {
+  return `<span class="badge" style="background:${color}">${esc(text)}</span>`;
+}
+
+// ─── PAGE 1: FEATURES ───
+function renderFeatures() {
+  const el = document.getElementById('page-features');
+  let h = `
+    <div class="page-header">
+      <div class="page-label">Nifty 50 Alpha Research</div>
+      <div class="page-title">Feature Taxonomy — 108 Signals</div>
+      <p class="page-subtitle">9 categories × 12 signals each. Diversity across categories matters more than depth within one.</p>
+    </div>
+    <div class="info-box purple">
+      <div class="info-box-title" style="color:var(--purple)">🎯 The Combination Principle</div>
+      <div class="info-box-text">
+        <strong>Rule #1:</strong> Combine signals from DIFFERENT categories. Momentum + Sentiment + Microstructure > three momentum variants.<br>
+        <strong>Rule #2:</strong> Signals should be as uncorrelated as possible.<br>
+        <strong>Rule #3:</strong> Match time horizons. Don't mix 1-second microstructure with 6-month value signals.<br>
+        <strong>Rule #4:</strong> Use regime/volatility signals as WEIGHTS, not standalone alphas.
+      </div>
+    </div>
+    <div class="filter-row" id="features-filters"></div>
+    <div id="features-cards"></div>
+  `;
+  el.innerHTML = h;
+
+  // Render filter pills
+  let filterHtml = `<button class="filter-pill active" data-filter="all">📋 All</button>`;
+  featuresData.forEach(c => {
+    filterHtml += `<button class="filter-pill" data-filter="${c.id}">${c.icon} ${c.name.split('&')[0].split('/')[0].trim()}</button>`;
+  });
+  document.getElementById('features-filters').innerHTML = filterHtml;
+
+  function renderCards(filter) {
+    const cats = filter === 'all' ? featuresData : featuresData.filter(c => c.id === filter);
+    let ch = '';
+    cats.forEach(cat => {
+      ch += `<div class="card" data-cat="${cat.id}" onclick="this.classList.toggle('expanded')">
+        <div class="card-header">
+          <span class="card-icon">${cat.icon}</span>
+          <div style="flex:1">
+            <div class="card-title" style="color:${cat.color}">${esc(cat.name)}</div>
+            <div class="card-meta">${cat.signals.length} signals · Timeframe: ${esc(cat.timeframe)} · Edge: ${esc(cat.edge)}</div>
+          </div>
+          <span class="card-arrow">▾</span>
+        </div>
+        ${cat.niftyNote ? `<div class="card-summary" style="font-style:italic">${esc(cat.niftyNote)}</div>` : ''}
+        <div class="card-details">
+          ${cat.signals.map(sig => `
+            <div class="signal-item">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+                <span class="signal-name" style="color:${cat.color}">${esc(sig.name)}</span>
+                ${badge(sig.importance)}
+              </div>
+              <div class="signal-formula">${esc(sig.formula)}</div>
+              <div class="signal-note">${esc(sig.note)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    });
+    document.getElementById('features-cards').innerHTML = ch;
+  }
+  renderCards('all');
+
+  document.querySelectorAll('#features-filters .filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#features-filters .filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      renderCards(pill.dataset.filter);
+    });
+  });
+}
+
+// ─── PAGE 2: ENCYCLOPEDIA ───
+function renderEncyclopedia() {
+  const el = document.getElementById('page-encyclopedia');
+  const total = encyclopediaData.reduce((a,c) => a + c.signals.length, 0);
+
+  let h = `
+    <div class="page-header">
+      <div class="page-label">Nifty 50 — Complete Encyclopedia</div>
+      <div class="page-title" style="background:linear-gradient(135deg,#f97316,#ec4899,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${total} Alpha Signals</div>
+      <p class="page-subtitle">${encyclopediaData.length} categories — from basic momentum to satellite imagery</p>
+    </div>
+    <input class="search-box" type="text" placeholder="Search signals... (e.g., 'FII', 'VIX', 'VWAP', 'monsoon')" id="enc-search">
+    <div class="search-count" id="enc-count" style="display:none"></div>
+    <div class="stats-row" id="enc-stats"></div>
+    <div id="enc-cards"></div>
+    <div class="info-box purple" style="margin-top:20px;text-align:center">
+      <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;color:var(--purple)">${total}</div>
+      <div class="info-box-text">Total signals. Each can be computed on multiple timeframes, creating 3-5× more features.<br><strong>Start with 20-30 core signals. Add complexity only when base model is profitable.</strong></div>
+    </div>
+  `;
+  el.innerHTML = h;
+
+  let expandedCat = null;
+
+  function render(query) {
+    const q = (query || '').toLowerCase();
+    const filtered = q ? encyclopediaData.map(c => ({
+      ...c, signals: c.signals.filter(s => s.toLowerCase().includes(q))
+    })).filter(c => c.signals.length > 0) : encyclopediaData;
+
+    const filteredTotal = filtered.reduce((a,c) => a + c.signals.length, 0);
+    const countEl = document.getElementById('enc-count');
+    if (q) { countEl.style.display = 'block'; countEl.textContent = `${filteredTotal} signals match "${q}"`; }
+    else { countEl.style.display = 'none'; }
+
+    // Stats
+    let stats = '';
+    encyclopediaData.forEach(c => {
+      const match = filtered.find(f => f.id === c.id);
+      const count = match ? match.signals.length : 0;
+      const dim = q && count === 0;
+      stats += `<div class="stat-chip" style="opacity:${dim?0.3:1}" onclick="toggleEncCat('${c.id}')">
+        <div class="stat-chip-label" style="color:${c.color}">${c.icon} ${c.name.split('&')[0].split('/')[0].trim()}</div>
+        <div class="stat-chip-num">${q ? count : c.signals.length}</div>
+      </div>`;
+    });
+    document.getElementById('enc-stats').innerHTML = stats;
+
+    // Cards
+    let cards = '';
+    filtered.forEach(cat => {
+      const isOpen = expandedCat === cat.id;
+      cards += `<div class="card ${isOpen?'expanded':''}" onclick="toggleEncCat('${cat.id}')">
+        <div class="card-header">
+          <span class="card-icon">${cat.icon}</span>
+          <div style="flex:1">
+            <span class="card-title" style="color:${isOpen?cat.color:'var(--text-primary)'}">${esc(cat.name)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-left:8px">${cat.signals.length} signals</span>
+          </div>
+          <span class="card-arrow">▾</span>
+        </div>
+        ${isOpen ? `<div class="card-details" style="display:flex">
+          ${cat.signals.map((sig,j) => {
+            const hl = q && sig.toLowerCase().includes(q);
+            return `<div class="signal-list-item ${hl?'highlight':''}">
+              <span class="num">${String(j+1).padStart(2,'0')}</span>${esc(sig)}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      </div>`;
+    });
+    document.getElementById('enc-cards').innerHTML = cards;
+  }
+
+  window.toggleEncCat = function(id) {
+    expandedCat = expandedCat === id ? null : id;
+    render(document.getElementById('enc-search').value);
+  };
+
+  document.getElementById('enc-search').addEventListener('input', (e) => {
+    expandedCat = null;
+    render(e.target.value);
+  });
+
+  render('');
+}
+
+// ─── PAGE 3: TOP 30 ───
+function renderTop30() {
+  const el = document.getElementById('page-top30');
+  let activePhase = 'p1';
+  let expandedSig = null;
+
+  function render() {
+    const phase = top30Data.find(p => p.id === activePhase);
+    let h = `
+      <div class="page-header">
+        <div class="page-label">Implementation Priority</div>
+        <div class="page-title">Top 30 Signals — Ranked & Detailed</div>
+        <p class="page-subtitle">Each signal includes: why, formula, data source, implementation, and historical edge.</p>
+      </div>
+      <div class="phase-selector">
+        ${top30Data.map(p => `
+          <button class="phase-btn ${activePhase===p.id?'active':''}" onclick="setPhase('${p.id}')">
+            <div class="week" style="${activePhase===p.id?'color:'+p.color:''}">${p.week}</div>
+            <div class="range">#${p.signals[0].rank}-${p.signals[p.signals.length-1].rank}</div>
+          </button>
+        `).join('')}
+      </div>
+      <div class="info-box" style="background:${phase.color}08;border:1px solid ${phase.color}33">
+        <div class="info-box-title" style="color:${phase.color}">${esc(phase.name)}</div>
+        <div class="info-box-text">${esc(phase.description)}</div>
+      </div>
+    `;
+
+    phase.signals.forEach(sig => {
+      const isOpen = expandedSig === sig.rank;
+      h += `<div class="card ${isOpen?'expanded':''}" onclick="toggleSig(${sig.rank})">
+        <div class="card-header">
+          <div class="rank-num" style="background:${phase.color}15;color:${phase.color}">#${sig.rank}</div>
+          <div style="flex:1">
+            <div class="card-title">${esc(sig.name)}</div>
+            <div class="card-meta">${sig.catIcon} ${esc(sig.category)}</div>
+          </div>
+          <span class="card-arrow">▾</span>
+        </div>
+        <div class="card-summary">${esc(sig.why)}</div>
+        ${isOpen ? `<div class="card-details" style="display:flex">
+          ${[
+            {label:'📐 Formula', text: sig.formula, color:'#7c3aed'},
+            {label:'📡 Data Source', text: sig.dataSource, color:'#0369a1'},
+            {label:'⚙️ Implementation', text: sig.implementation, color:'#b45309'},
+            {label:'📈 Edge / Historical', text: sig.edge, color:'#0f766e'},
+            {label:'⏱️ Timeframe', text: sig.timeframe, color:'#dc2626'},
+          ].map(d => `
+            <div class="detail-row">
+              <div class="detail-label" style="color:${d.color}">${d.label}</div>
+              <div class="detail-text">${esc(d.text)}</div>
+            </div>
+          `).join('')}
+        </div>` : ''}
+      </div>`;
+    });
+
+    // Implementation checklist
+    h += `<div class="info-box purple" style="margin-top:20px">
+      <div class="info-box-title" style="color:var(--purple)">✅ Implementation Checklist</div>
+      <div class="info-box-text">
+        <strong style="color:var(--red)">Week 1:</strong> Set up NSE data pipelines. Automate daily downloads.<br>
+        <strong style="color:var(--red)">Week 2:</strong> Implement signals #1-10. Build dashboard. Paper trade.<br>
+        <strong style="color:var(--red)">Week 3:</strong> Implement signals #11-20. Start combining into composite score.<br>
+        <strong style="color:var(--red)">Week 4:</strong> Backtest composite score vs Nifty returns. Iterate weights.<br>
+        <strong style="color:var(--red)">Week 5:</strong> Implement signals #21-30. Add LLM sentiment. Connect macro feeds.<br>
+        <strong style="color:var(--red)">Week 6:</strong> Full system backtest. Compare phases. Measure marginal improvement.<br>
+        <strong style="color:var(--red)">Week 7-8:</strong> Paper trade live with all 30. Track accuracy. Kill bad signals.<br>
+        <strong style="color:var(--red)">Week 9+:</strong> Go live with small capital. Scale gradually.
+      </div>
+    </div>`;
+
+    el.innerHTML = h;
+  }
+
+  window.setPhase = function(id) { activePhase = id; expandedSig = null; render(); };
+  window.toggleSig = function(rank) { expandedSig = expandedSig === rank ? null : rank; render(); };
+  render();
+}
+
+// ─── PAGE 4: RISK MANAGEMENT ───
+function renderRisk() {
+  const el = document.getElementById('page-risk');
+  let activeSec = riskData[0].id;
+  let expandedBlock = null;
+
+  function render() {
+    const sec = riskData.find(s => s.id === activeSec);
+    let h = `
+      <div class="page-header">
+        <div class="page-label">Nifty 50 Risk Engine</div>
+        <div class="page-title">Alpha → Risk Conversion System</div>
+        <p class="page-subtitle">6 modules · Position sizing · Stops · Exposure · Hedging · Monitoring</p>
+      </div>
+      <div class="sub-nav">
+        ${riskData.map(s => `
+          <button class="sub-nav-btn ${activeSec===s.id?'active':''}" onclick="setRiskSec('${s.id}')">
+            <div class="icon">${s.icon}</div>
+            <div class="label">${s.name.split('&')[0].split('(')[0].trim()}</div>
+          </button>
+        `).join('')}
+      </div>
+      <div class="info-box" style="background:${sec.color}08;border:1px solid ${sec.color}33">
+        <div class="info-box-title" style="color:${sec.color}">${sec.icon} ${esc(sec.name)}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-style:italic;margin-bottom:6px">${esc(sec.subtitle)}</div>
+        <div class="info-box-text">${esc(sec.intro)}</div>
+      </div>
+    `;
+
+    sec.blocks.forEach((block, i) => {
+      const key = `${sec.id}-${i}`;
+      const isOpen = expandedBlock === key;
+      h += `<div class="card ${isOpen?'expanded':''}" onclick="toggleRiskBlock('${key}')">
+        <div class="card-header">
+          <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="card-title">${esc(block.title)}</span>
+            ${tagBadge(block.tag, block.tagColor)}
+          </div>
+          <span class="card-arrow">▾</span>
+        </div>
+        <div class="card-summary" style="padding-left:0">${esc(block.content)}</div>
+        ${isOpen ? `<div class="code-block">${esc(block.example)}</div>` : ''}
+      </div>`;
+    });
+
+    // Golden rules for the last section
+    h += `<div class="info-box purple" style="margin-top:20px">
+      <div class="info-box-title" style="color:var(--purple)">⚡ The Golden Rules of Nifty Risk Management</div>
+      <div class="info-box-text">
+        <strong style="color:var(--red)">1.</strong> Never risk more than 1-2% of capital on a single trade. Never.<br>
+        <strong style="color:var(--red)">2.</strong> India VIX is your master switch. Respect the regime ladder.<br>
+        <strong style="color:var(--red)">3.</strong> FII flows are the tide. Don't swim against sustained FII selling.<br>
+        <strong style="color:var(--red)">4.</strong> Circuit breakers are AUTOMATED. No human overrides. Ever.<br>
+        <strong style="color:var(--red)">5.</strong> Hedge when it's cheap (low VIX), not when you're scared (high VIX).<br>
+        <strong style="color:var(--red)">6.</strong> Position size based on conviction score, not on how much you want to make.<br>
+        <strong style="color:var(--red)">7.</strong> Time stops are as important as price stops. Kill losers early.<br>
+        <strong style="color:var(--red)">8.</strong> The best trade is the one you DON'T take when conditions are bad.<br>
+        <strong style="color:var(--red)">9.</strong> Review every day. Log every violation. Fix every leak.<br>
+        <strong style="color:var(--red)">10.</strong> Survival first. Profits second. Always.
+      </div>
+    </div>`;
+
+    el.innerHTML = h;
+  }
+
+  window.setRiskSec = function(id) { activeSec = id; expandedBlock = null; render(); };
+  window.toggleRiskBlock = function(key) { expandedBlock = expandedBlock === key ? null : key; render(); };
+  render();
+}
+
+// ─── PAGE 5: STRIKE & TIMING ───
+function renderStrike() {
+  const el = document.getElementById('page-strike');
+  let activeSec = strikeData[0].id;
+  let expandedBlock = null;
+
+  function render() {
+    const sec = strikeData.find(s => s.id === activeSec);
+    let h = `
+      <div class="page-header">
+        <div class="page-label">Signal → Execution Engine</div>
+        <div class="page-title">Strike Selection & Entry Timing</div>
+        <p class="page-subtitle">Convert your 30 alpha signals into exact strike prices, entry times, and position sizes.</p>
+      </div>
+      <div class="sub-nav">
+        ${strikeData.map(s => `
+          <button class="sub-nav-btn ${activeSec===s.id?'active':''}" onclick="setStrikeSec('${s.id}')">
+            <div class="icon">${s.icon}</div>
+            <div class="label">${s.name.split('—')[0].split('(')[0].trim()}</div>
+          </button>
+        `).join('')}
+      </div>
+      <div class="info-box" style="background:${sec.color}08;border:1px solid ${sec.color}33">
+        <div class="info-box-title" style="color:${sec.color}">${sec.icon} ${esc(sec.name)}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-style:italic;margin-bottom:6px">${esc(sec.subtitle)}</div>
+      </div>
+    `;
+
+    sec.blocks.forEach((block, i) => {
+      const key = `${sec.id}-${i}`;
+      const isOpen = expandedBlock === key;
+      h += `<div class="card ${isOpen?'expanded':''}" onclick="toggleStrikeBlock('${key}')">
+        <div class="card-header">
+          <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="card-title">${esc(block.title)}</span>
+            ${tagBadge(block.tag, block.tagColor)}
+          </div>
+          <span class="card-arrow">▾</span>
+        </div>
+        <div class="card-summary" style="padding-left:0">${esc(block.content)}</div>
+        ${isOpen ? `<div class="code-block">${esc(block.example)}</div>` : ''}
+      </div>`;
+    });
+
+    // Bottom summary
+    h += `<div class="info-box purple" style="margin-top:20px">
+      <div class="info-box-title" style="color:var(--purple)">⚡ The Complete Flow — Signal to P&L</div>
+      <div class="info-box-text">
+        <strong style="color:var(--red)">8:30 AM:</strong> Compute composite signal score from overnight data → Direction decided<br>
+        <strong style="color:var(--red)">9:00 AM:</strong> Check GIFT Nifty gap + pre-open → Confirm or adjust bias<br>
+        <strong style="color:var(--red)">9:15 AM:</strong> Market opens → Record Opening Range (15 min) → Do NOT trade yet<br>
+        <strong style="color:var(--red)">9:30 AM:</strong> Compute expected move + map OI walls → Select strike using decision tree<br>
+        <strong style="color:var(--red)">9:35 AM:</strong> If OR breakout confirmed → Enter with pre-calculated size and stop<br>
+        <strong style="color:var(--red)">10:00 AM:</strong> Monitor real-time: basis, OI shifts, OFI → Adjust or add<br>
+        <strong style="color:var(--red)">12:30 PM:</strong> If overextended from VWAP → Consider mean reversion entry<br>
+        <strong style="color:var(--red)">2:00 PM:</strong> If expiry tomorrow → Set up pin trade or close gamma risk<br>
+        <strong style="color:var(--red)">2:45 PM:</strong> Final position check → All stops in place for overnight<br>
+        <strong style="color:var(--red)">3:30 PM:</strong> Market close → Record results → Update signal scores → Prepare for tomorrow
+      </div>
+    </div>`;
+
+    el.innerHTML = h;
+  }
+
+  window.setStrikeSec = function(id) { activeSec = id; expandedBlock = null; render(); };
+  window.toggleStrikeBlock = function(key) { expandedBlock = expandedBlock === key ? null : key; render(); };
+  render();
+}
+
+// ─── INIT ───
+renderFeatures();
+renderEncyclopedia();
+renderTop30();
+renderRisk();
+renderStrike();
+</script>
+</body>
+</html>
