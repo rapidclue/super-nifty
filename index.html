@@ -342,6 +342,7 @@ body {
       <button class="nav-tab" data-page="top30">🎯 Top 30 Priority</button>
       <button class="nav-tab" data-page="risk">🛡️ Risk Management</button>
       <button class="nav-tab" data-page="strike">⚡ Strike & Timing</button>
+      <button class="nav-tab" data-page="reco">🔥 Live Examples</button>
     </div>
   </div>
 </nav>
@@ -372,6 +373,11 @@ body {
 <!-- PAGE 5: STRIKE & TIMING                                 -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="page" id="page-strike"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE 6: RECOMMENDATION ENGINE — LIVE EXAMPLES           -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-reco"></div>
 
 </div>
 
@@ -1589,7 +1595,7 @@ const top30Data = [
         why: "THE single most predictive medium-term signal for Nifty. FII flows drive 60-70% of Nifty's directional moves. No other signal comes close for swing trading.",
         formula: "FII Buy Value - FII Sell Value (cash segment)",
         dataSource: "NSE website → Market Data → FII/DII data. Published daily ~8:30 PM IST. Free.",
-        implementation: "Download CSV daily. Compute: raw daily, 5d rolling sum, 10d rolling sum, 21d cumulative. Normalize by 90-day average for signal strength.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nDownload NSE FII/DII CSV daily at 9 PM IST (automate via cron + Python requests).\nStore in DB: date, fii_buy, fii_sell, fii_net, dii_buy, dii_sell, dii_net.\n\nSTEP 2 \u2014 FEATURE COMPUTATION:\nfii_net_today = fii_buy - fii_sell\nfii_5d_sum = rolling_sum(fii_net, 5)\nfii_10d_sum = rolling_sum(fii_net, 10)\nfii_21d_sum = rolling_sum(fii_net, 21)\nfii_90d_avg = rolling_mean(abs(fii_net), 90)\nnormalized_flow = fii_net_today / fii_90d_avg\nflow_momentum = fii_5d_sum - fii_10d_sum (acceleration)\n\nSTEP 3 \u2014 SCORING (output: -1.0 to +1.0):\nBase score from normalized_flow:\n  > +2.0\u03c3 \u2192 +1.0 (extreme buying)\n  +1.0 to +2.0\u03c3 \u2192 +0.7\n  +0.5 to +1.0\u03c3 \u2192 +0.4\n  -0.5 to +0.5\u03c3 \u2192 0.0 (neutral)\n  -1.0 to -0.5\u03c3 \u2192 -0.4\n  -2.0 to -1.0\u03c3 \u2192 -0.7\n  < -2.0\u03c3 \u2192 -1.0 (extreme selling)\n\nStreak multiplier:\n  3+ consecutive days same direction \u2192 \u00d71.3 (cap at \u00b11.0)\n  5+ consecutive days \u2192 \u00d71.5\n  Mixed direction \u2192 \u00d70.7 (low conviction)\n\nFINAL: fii_score = clamp(base \u00d7 streak_mult, -1.0, +1.0)\n\nSTEP 4 \u2014 COMPOSITE WEIGHT: 20% of total composite score.",
         edge: "Sustained FII buying > ₹1000cr/day for 5+ days = strong bullish regime. Sustained selling = bearish. Regime transitions are most profitable.",
         timeframe: "Daily update, swing-trade horizon (3-15 days)",
       },
@@ -1601,7 +1607,7 @@ const top30Data = [
         why: "Your MASTER RISK SWITCH. Controls position sizing, strategy selection, and exposure limits. Without this, you're flying blind on risk.",
         formula: "India VIX value + percentile rank in 252-day distribution",
         dataSource: "NSE → India VIX real-time. Also available via broker APIs (Zerodha Kite, Angel One). Free.",
-        implementation: "Track: absolute level, daily % change, percentile rank (252d), Z-score. Create regime buckets: <12 (complacent), 12-16 (normal), 16-20 (elevated), 20-25 (fear), >25 (panic).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch India VIX real-time from broker API (Zerodha: instrument token 264969).\nStore: timestamp, vix_level. EOD: store close, high, low.\nBuild 252 trading days history for percentile.\n\nSTEP 2 \u2014 FEATURE COMPUTATION:\nvix_level = current India VIX\nvix_daily_change_pct = (today - yesterday) / yesterday \u00d7 100\nvix_percentile = percentile_rank(vix_level, last_252_days)\nvix_zscore = (vix_level - mean_252d) / std_252d\nvix_5d_change = (today - 5d_ago) / 5d_ago \u00d7 100\n\nSTEP 3 \u2014 REGIME CLASSIFICATION:\nvix < 12: COMPLACENT | 12-16: NORMAL | 16-20: ELEVATED\n20-25: FEAR | >25: PANIC\n\nSTEP 4 \u2014 SCORING (output: -1.0 to +1.0):\nA: Level score:\n  percentile < 15 \u2192 +0.5 | 15-40 \u2192 +0.3 | 40-60 \u2192 0.0\n  60-80 \u2192 -0.3 | 80-95 \u2192 -0.7 | >95 \u2192 -1.0\n\nB: Change score:\n  daily_change > +15% \u2192 -0.5 (spike = bearish)\n  daily_change > +8% \u2192 -0.3 | -2 to +2% \u2192 0.0\n  < -8% \u2192 +0.3 | < -15% \u2192 +0.5 (crush = bullish)\n\nFINAL: vix_score = 0.6 \u00d7 level + 0.4 \u00d7 change. Clamp \u00b11.0.\n\nEXPOSURE MULTIPLIER (separate):\nCOMPLACENT: 100% | NORMAL: 100% | ELEVATED: 75%\nFEAR: 50% | PANIC: 25%\nApplied to ALL position sizes.\n\nCOMPOSITE WEIGHT: 15% of total.",
         edge: "VIX < 13 = sell options, full exposure. VIX > 20 = buy protection, reduce exposure. VIX spike > 15% in one day often marks short-term bottom within 2-3 sessions.",
         timeframe: "Real-time during market, daily regime classification",
       },
@@ -1613,7 +1619,7 @@ const top30Data = [
         why: "India's options market is the world's largest by volume. OI walls define support/resistance more reliably than any technical level. This is your EDGE over global quants who don't understand Indian options.",
         formula: "Open Interest per strike for Calls and Puts across all active strikes",
         dataSource: "NSE → Option Chain page. Broker APIs provide real-time OI. Free via NSE, real-time via API.",
-        implementation: "Scrape full option chain every 3 minutes. Track: highest Call OI strike (resistance), highest Put OI strike (support), OI change per strike (Δ from previous day/hour). Visualize as heatmap.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nScrape NSE option chain API every 3 min (9:15-3:30).\nURL: nseindia.com/api/option-chain-indices?symbol=NIFTY\nStore per snapshot: strike, call_oi, put_oi, call_oi_change, put_oi_change.\n\nSTEP 2 \u2014 FEATURE COMPUTATION:\nmax_call_oi_strike = strike with highest Call OI (resistance)\nmax_put_oi_strike = strike with highest Put OI (support)\ncall_wall_dist = (max_call_oi - spot) / ATR\nput_wall_dist = (spot - max_put_oi) / ATR\noi_bias = total_put_oi / total_call_oi\nwall_shift = did OI walls move since morning?\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Position within walls (40% weight):\n  Near put wall (\u22640.5 ATR) \u2192 +0.4 (at support)\n  Near call wall (\u22640.5 ATR) \u2192 -0.4 (at resistance)\n  Middle \u2192 0.0\n\nB: OI bias (30% weight):\n  bias > 1.3 \u2192 +0.3 (heavy puts = bullish floor)\n  bias < 0.7 \u2192 -0.3 (heavy calls = bearish ceiling)\n\nC: Wall movement (30% weight):\n  Both walls shifted UP \u2192 +0.3 (range moving higher)\n  Both walls shifted DOWN \u2192 -0.3\n  Stable \u2192 0.0\n\nFINAL: oi_score = 0.4\u00d7A + 0.3\u00d7B + 0.3\u00d7C. Clamp \u00b11.0.\nCOMPOSITE WEIGHT: 15% of total.",
         edge: "Nifty gravitates toward highest OI zones. Heavy Put OI = strong support (option writers defend it). Heavy Call OI = strong resistance. OI walls shifting = support/resistance moving.",
         timeframe: "Real-time intraday, update every 3-5 minutes",
       },
@@ -1625,7 +1631,7 @@ const top30Data = [
         why: "Fastest real-time sentiment indicator. Basis reflects institutional positioning RIGHT NOW. When smart money is bullish, they pay premium for futures.",
         formula: "(Nifty Futures Price - Nifty Spot) / Nifty Spot × 100",
         dataSource: "Any broker terminal — real-time. NSE for end-of-day. Zerodha Kite API gives live data.",
-        implementation: "Compute continuously during market hours. Track: current basis, basis trend (rising/falling in last 30 min), basis percentile vs 30-day history. Flag: basis turning negative = bearish alarm.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch spot + near-month futures real-time from broker API.\nCompute basis every 1-min bar.\nStore: timestamp, spot, futures, basis_pct.\n\nSTEP 2 \u2014 FEATURE COMPUTATION:\nbasis_pct = (futures - spot) / spot \u00d7 100\nbasis_30min_trend = slope of basis over last 30 min\nbasis_percentile = rank vs last 30 trading days\nbasis_speed = basis_now - basis_15min_ago\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Level score (50%):\n  basis > +0.3% \u2192 +0.5 (strong contango)\n  +0.1 to +0.3% \u2192 +0.3 | 0 to +0.1% \u2192 +0.1\n  -0.05 to 0% \u2192 -0.2 | < -0.05% \u2192 -0.5\n  < -0.15% \u2192 -1.0 (deep backwardation)\n\nB: Trend score (30%):\n  30min trend rising \u2192 +0.3 | falling \u2192 -0.3 | flat \u2192 0.0\n\nC: Regime change (20%):\n  Basis just turned negative (was positive 1hr ago) \u2192 -0.5\n  Basis just turned positive \u2192 +0.5\n\nFINAL: basis_score = 0.5\u00d7A + 0.3\u00d7B + 0.2\u00d7C. Clamp \u00b11.0.\nCOMPOSITE WEIGHT: 10% of total.",
         edge: "Positive basis (>0.1%) = bullish positioning. Negative basis = bearish. Basis collapsing rapidly = institutional selling in real-time. React before price catches up.",
         timeframe: "Real-time, tick-level computation",
       },
@@ -1637,7 +1643,7 @@ const top30Data = [
         why: "Predicts Nifty's opening direction with ~70% accuracy. Gives you a 15-minute head start on the market every single day.",
         formula: "(GIFT Nifty 8:45 AM price - Nifty previous close) / Nifty previous close × 100",
         dataSource: "NSE IFSC (GIFT City) — available from 6:30 AM IST. Broker apps show it pre-market. Free.",
-        implementation: "Capture GIFT Nifty at 8:45 AM and 9:00 AM. Compute gap %. Classify: small (<0.3%), medium (0.3-0.7%), large (>0.7%). Track historical gap fill rates by size bucket.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch GIFT Nifty at 8:45 AM and 9:00 AM IST from broker app or NSE IFSC.\nStore: date, gift_845, gift_900, nifty_prev_close.\n\nSTEP 2 \u2014 FEATURES:\ngap_pct = (gift_900 - prev_close) / prev_close \u00d7 100\ngap_class = SMALL (<0.3%) | MEDIUM (0.3-0.7%) | LARGE (>0.7%)\ngap_vs_atr = abs(gap) / ATR_14d\nfill_prob = historical fill rate by (size, direction) bucket\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Direction + size:\n  LARGE UP (>0.7%) \u2192 +0.8 (trend day likely)\n  MEDIUM UP \u2192 +0.3 | SMALL UP \u2192 +0.1\n  SMALL DOWN \u2192 -0.1 | MEDIUM DOWN \u2192 -0.3\n  LARGE DOWN \u2192 -0.8\n\nB: Gap fill adjustment (SMALL/MEDIUM only):\n  If fill_prob > 60% \u2192 flip sign, reduce by 50%\n  (Small gaps mean-revert. Large gaps trend.)\n\nC: US overnight confirmation:\n  US direction matches gap \u2192 \u00d71.3\n  US contradicts gap \u2192 \u00d70.5\n\nFINAL: gap_score = base \u00d7 fill_adj \u00d7 us_confirm. Clamp \u00b11.0.\nUSAGE: Pre-market only. Sets initial daily bias.\nPart of Momentum 10% bucket.",
         edge: "Large gaps (>0.7%) fill only ~35% of the time — these tend to trend. Small gaps (<0.3%) fill ~65% — mean reversion. Medium gaps are noise. Direction + size = your first trade decision each day.",
         timeframe: "Pre-market (8:30-9:15 AM), sets daily bias",
       },
@@ -1649,7 +1655,7 @@ const top30Data = [
         why: "Best single-number sentiment indicator for Nifty. Extreme readings are contrarian signals with 65-70% accuracy at turning points.",
         formula: "Total Nifty Put OI / Total Nifty Call OI",
         dataSource: "NSE Option Chain → sum all Put OI / sum all Call OI. Available real-time.",
-        implementation: "Compute every 3 minutes. Track: absolute level, 5-day moving average, percentile rank (60d). Define zones: <0.7 (bearish extreme → contrarian bullish), 0.7-1.0 (neutral), 1.0-1.3 (bullish), >1.3 (bullish extreme → contrarian caution).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFrom option chain (Signal #3): total_put_oi / total_call_oi.\nUpdate every 3 min. Store daily close PCR for history.\n\nSTEP 2 \u2014 FEATURES:\npcr = total_put_oi / total_call_oi\npcr_5d_ma = rolling mean of daily PCR\npcr_percentile = rank in last 60 days\npcr_direction = RISING if pcr > pcr_5d_ma else FALLING\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nPCR is CONTRARIAN at extremes, directional in mid-range.\n\nA: Level score:\n  pcr > 1.5 \u2192 +0.8 (extreme put buying = contrarian BUY)\n  1.3-1.5 \u2192 +0.5 | 1.1-1.3 \u2192 +0.3\n  0.9-1.1 \u2192 0.0 (neutral)\n  0.7-0.9 \u2192 -0.3 | 0.5-0.7 \u2192 -0.5\n  < 0.5 \u2192 -0.8 (extreme calls = contrarian SELL)\n\nB: Momentum: RISING \u2192 +0.2 | FALLING \u2192 -0.2\n\nC: Reversal bonus:\n  percentile > 95 AND pcr started falling \u2192 +0.3\n  percentile < 5 AND pcr started rising \u2192 -0.3\n\nFINAL: pcr_score = clamp(A + B + C, -1.0, +1.0)\nPart of Options 15% bucket (40% share = 6% effective).",
         edge: "PCR rising from below 0.8 toward 1.0+ = put writers gaining confidence = bullish. PCR spiking above 1.5 = panic put buying = contrarian buy signal. PCR < 0.65 = extreme call buying = top warning.",
         timeframe: "Real-time intraday, daily for trend",
       },
@@ -1661,7 +1667,7 @@ const top30Data = [
         why: "Directly shows how foreign institutions are POSITIONED, not just what they're buying. Positioning predicts direction more reliably than flow alone.",
         formula: "FII Long Contracts / FII Short Contracts in Nifty + Bank Nifty futures",
         dataSource: "NSE → Participant-wise OI data → FII/FPI category. Published daily with 1-day lag. Free.",
-        implementation: "Download daily. Compute: ratio, 5d MA of ratio, percentile rank (90d). Flag extremes: ratio > 3.0 = very bullish, ratio < 1.0 = very bearish, ratio > 5.0 or < 0.5 = crowded (reversal risk).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nDownload NSE Participant-wise OI daily.\nExtract FII/FPI Index Futures: long contracts, short contracts.\n\nSTEP 2 \u2014 FEATURES:\nratio = fii_long / fii_short\nratio_5d_ma = rolling mean\nratio_percentile = rank in 90 days\nratio_change = today - yesterday\ncrossover_up = ratio crossed above 2.0 from below\ncrossover_down = ratio crossed below 1.0 from above\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Level:\n  > 5.0 \u2192 +0.5 (bullish BUT crowded \u2014 cap score)\n  3.0-5.0 \u2192 +0.8 | 2.0-3.0 \u2192 +0.5 | 1.5-2.0 \u2192 +0.3\n  1.0-1.5 \u2192 +0.1 | 0.7-1.0 \u2192 -0.3 | 0.5-0.7 \u2192 -0.7\n  < 0.5 \u2192 -0.5 (bearish BUT crowded \u2014 cap)\n\nB: Momentum:\n  Rising 3+ days \u2192 +0.2 | Falling 3+ days \u2192 -0.2\n  Crossover up \u2192 +0.3 | Crossover down \u2192 -0.3\n\nC: Crowding penalty (CRITICAL):\n  ratio > 5.0 \u2192 cap at +0.5 | ratio < 0.5 \u2192 cap at -0.5\n  (Extremes always reverse violently)\n\nFINAL: fii_ls_score = clamp(A + B, \u00b11.0) with crowding cap.\nPart of FII Flow 20% bucket (40% share = 8% effective).",
         edge: "When FII L/S ratio crosses above 2.0 from below, Nifty rallies 70% of the time in next 5 sessions. When it drops below 1.0, Nifty falls 65% of time. Extremes (>5 or <0.5) often mark reversals.",
         timeframe: "Daily update (1-day lagged), swing-trade signal",
       },
@@ -1673,7 +1679,7 @@ const top30Data = [
         why: "In the world's most active options market, option writers (institutions) have massive incentive to push price toward max pain. It's a price magnet, especially in last 3 days before expiry.",
         formula: "Strike where sum of (Call buyer losses + Put buyer losses) is maximized",
         dataSource: "Computed from NSE option chain data. Several free websites (Sensibull, Opstra) show it.",
-        implementation: "Calculate for both weekly and monthly expiry. Track: max pain level, distance from current price (in ATR units), direction to max pain. Key metric: if Nifty is 200+ points away from max pain with 2 days to expiry = strong gravitational pull.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nUse option chain data (Signal #3). For each active expiry.\n\nSTEP 2 \u2014 MAX PAIN CALCULATION:\nFor each strike K:\n  call_loss = max(0, K - spot) \u00d7 call_oi_at_K\n  put_loss = max(0, spot - K) \u00d7 put_oi_at_K\n  total_loss[K] = call_loss + put_loss\nmax_pain = K with highest total_loss\n\nSTEP 3 \u2014 FEATURES:\ndistance = spot - max_pain (positive = above)\ndist_in_atr = abs(distance) / ATR_14d\ndays_to_expiry = trading days to Tuesday\nmp_gravity = dist_in_atr / max(dte, 0.5)\nmp_confluence = max_pain == max_OI_strike (True/False)\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nMax pain is GRAVITATIONAL \u2014 pulls price, strongest near expiry.\n\n  dte > 3 \u2192 score = 0.0 (too far, weak pull)\n  dte \u2264 3 AND dist > 2 ATR:\n    ABOVE mp \u2192 -0.5 | BELOW mp \u2192 +0.5\n  dte \u2264 2 AND dist > 1 ATR:\n    ABOVE \u2192 -0.7 | BELOW \u2192 +0.7\n  dte \u2264 1 AND dist > 0.5 ATR:\n    ABOVE \u2192 -0.8 | BELOW \u2192 +0.8\n  dist < 0.3 ATR AND dte \u2264 2 \u2192 0.0 (pinned \u2014 sell straddle)\n\nConfluence bonus: if mp = max_OI \u2192 \u00d71.3\n\nFINAL: clamp(dist_score \u00d7 confluence, \u00b11.0)\nWeight: Part of Options 15%. Dynamic: 4.5% normally, 8% in last 2 days before expiry.",
         edge: "In last 3 days of expiry, Nifty moves toward max pain ~60% of the time. Combine with OI distribution for confirmation. If max pain AND highest OI strike are at same level = very strong magnet.",
         timeframe: "Daily update, strongest signal in last 3 days before expiry",
       },
@@ -1685,7 +1691,7 @@ const top30Data = [
         why: "S&P 500 and Nasdaq performance after Indian market close is absorbed at next morning's open. This is a free look at the future — you know the input before the market prices it.",
         formula: "S&P 500 and Nasdaq 100 close-to-close return (after 9:30 PM IST)",
         dataSource: "Any financial data provider. Yahoo Finance API, broker apps, Google Finance. Free.",
-        implementation: "Capture US market close at ~4 AM IST (or previous night). Compute return. Weight: S&P 500 (40%), Nasdaq (40%), Dow (20%). Combine with GIFT Nifty gap for confirmation. Track: correlation between US return and next-day Nifty return (rolling 60d).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch US closes after 4 AM IST. Yahoo Finance / Alpha Vantage.\nStore: sp500_return, nasdaq_return, dow_return.\n\nSTEP 2 \u2014 FEATURES:\nus_composite = 0.4\u00d7SP500 + 0.4\u00d7Nasdaq + 0.2\u00d7Dow\nus_nifty_corr = rolling_corr(us_composite, nifty_next_day, 60d)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Magnitude:\n  us > +2.0% \u2192 +1.0 | +1 to +2% \u2192 +0.7 | +0.5 to +1% \u2192 +0.4\n  +0.2 to +0.5% \u2192 +0.2 | \u00b10.2% \u2192 0.0\n  -0.5 to -0.2% \u2192 -0.2 | -1 to -0.5% \u2192 -0.4\n  -2 to -1% \u2192 -0.7 | < -2% \u2192 -1.0\n\nB: Correlation weight:\n  Multiply by us_nifty_corr (0.5-0.8 typically).\n  High corr = signal strong. Low corr = domestic factors dominate.\n\nC: GIFT Nifty confirmation:\n  GIFT matches US direction \u2192 keep score\n  GIFT contradicts \u2192 reduce 50%\n\nFINAL: us_score = clamp(magnitude \u00d7 corr_weight, \u00b11.0)\nCOMPOSITE WEIGHT: 10% (US/Global bucket).",
         edge: "US down > 1.5% = Nifty opens gap down ~85% of time. US up > 1% = Nifty opens gap up ~75%. The correlation varies by regime — stronger when FII is active, weaker during domestic events.",
         timeframe: "Pre-market signal, captured previous night / early morning",
       },
@@ -1697,7 +1703,7 @@ const top30Data = [
         why: "THE classic Indian market framework. Every professional trader in India uses this. OI change + price direction tells you if moves are backed by conviction or just noise.",
         formula: "Classify: Price ↑ + OI ↑ = Long Buildup | Price ↓ + OI ↑ = Short Buildup | Price ↑ + OI ↓ = Short Covering | Price ↓ + OI ↓ = Long Unwinding",
         dataSource: "NSE end-of-day data for Nifty futures. Real-time via broker API.",
-        implementation: "Compute daily. Track classification streak (e.g., 3 consecutive days of Long Buildup = strong trend). Monitor OI magnitude — large OI increase with price move = high conviction. Small OI change = low conviction.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nNifty futures close + OI from NSE bhavcopy daily.\nprice_change = today - yesterday\noi_change = today_oi - yesterday_oi\n\nSTEP 2 \u2014 CLASSIFICATION:\nprice\u2191 + oi\u2191 = LONG_BUILDUP (bullish)\nprice\u2193 + oi\u2191 = SHORT_BUILDUP (bearish)\nprice\u2191 + oi\u2193 = SHORT_COVERING (weak bullish)\nprice\u2193 + oi\u2193 = LONG_UNWINDING (weak bearish)\n\nSTEP 3 \u2014 FEATURES:\nstreak = consecutive days of same classification\noi_magnitude = abs(oi_change) / avg_20d (normalized)\nprice_magnitude = abs(price_change) / ATR_14d\nconviction = oi_magnitude \u00d7 price_magnitude\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nA: Base: LONG_BUILDUP \u2192 +0.5 | SHORT_COV \u2192 +0.2\n  LONG_UNWIND \u2192 -0.2 | SHORT_BUILDUP \u2192 -0.5\n\nB: Streak mult:\n  1d \u2192 \u00d71.0 | 2d \u2192 \u00d71.2 | 3d \u2192 \u00d71.5\n  4-5d \u2192 \u00d71.8 | 6+d \u2192 \u00d71.5 (exhaustion)\n\nC: Conviction mult:\n  conviction > 2.0 \u2192 \u00d71.3 | 1.0-2.0 \u2192 \u00d71.0 | < 0.5 \u2192 \u00d70.5\n\nFINAL: clamp(base \u00d7 streak \u00d7 conviction, \u00b11.0)\nPart of Futures/Micro 10% bucket (50% share = 5%).",
         edge: "Long Buildup for 3+ days → Nifty continues higher 72% of time. Short Covering (price up but OI falling) → rally is weak, likely to fade. Short Buildup for 3+ days → continue selling 68% of time.",
         timeframe: "Daily (end-of-day), can compute intraday from live OI snapshots",
       },
@@ -1719,7 +1725,7 @@ const top30Data = [
         why: "Tells you whether market makers will SUPPRESS or AMPLIFY the next move. Positive GEX = low vol (dealers hedge against you). Negative GEX = explosive moves (dealers hedge WITH you).",
         formula: "Net gamma of market maker positions across all Nifty option strikes",
         dataSource: "Computed from option chain OI + Greeks. Needs option pricing model. Sensibull/Opstra provide approximations.",
-        implementation: "For each strike: Gamma × OI × 100 × Nifty² / 10⁷. Sum Calls (flip sign) + Puts. Track: GEX sign (positive/negative), GEX flip point (price where GEX changes sign), GEX magnitude.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nOption chain (Signal #3). Need: strike, call_oi, put_oi, call_gamma, put_gamma.\nIf gamma unavailable, compute via Black-Scholes:\n  gamma = N_prime(d1) / (S \u00d7 \u03c3 \u00d7 \u221aT)\n\nSTEP 2 \u2014 GEX COMPUTATION:\nFor each strike K:\n  call_gex = call_gamma \u00d7 call_oi \u00d7 100 \u00d7 spot\u00b2 / 10\u2077\n  put_gex = put_gamma \u00d7 put_oi \u00d7 100 \u00d7 spot\u00b2 / 10\u2077 \u00d7 (-1)\ntotal_gex = sum(call_gex + put_gex)\ngex_flip_point = strike where cumulative GEX changes sign\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nGEX predicts REGIME, not direction.\n\nA: GEX sign \u2192 strategy selector:\n  Positive \u2192 MEAN_REVERT mode (dealers suppress moves)\n  Negative \u2192 MOMENTUM mode (dealers amplify moves)\n\nB: Flip point as level:\n  Price above flip + positive GEX \u2192 +0.2 (supportive)\n  Price below flip + negative GEX \u2192 -0.2 (dangerous)\n\nC: Regime transition (most valuable):\n  GEX flipped pos\u2192neg \u2192 -0.3 (vol expansion starting)\n  GEX flipped neg\u2192pos \u2192 +0.3 (vol compression)\n\nFINAL: gex_score = clamp(B + C, \u00b11.0)\nPrimary use: STRATEGY SELECTOR for mean-rev vs momentum signals.",
         edge: "Positive GEX = Nifty range-bound, mean-reversion strategies work. Negative GEX = Nifty can move violently, use momentum strategies. GEX flip point is a critical support/resistance level.",
         timeframe: "Compute every 15 minutes from live option chain",
       },
@@ -1731,7 +1737,7 @@ const top30Data = [
         why: "When daily, hourly, and 15-min RSI all agree on oversold/overbought, reversal probability jumps from ~55% to ~75%. Multi-timeframe confirmation is the key.",
         formula: "14-period RSI on 15-min, hourly, and daily charts simultaneously",
         dataSource: "Computed from OHLC data at each timeframe. Any broker API provides this.",
-        implementation: "Run RSI(14) on 3 timeframes. Score: all 3 oversold (<30) = STRONG BUY signal (+3). Two oversold = moderate (+2). One = weak (+1). Mirror for overbought. Track RSI divergences (price new low but RSI higher low = bullish divergence).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch OHLC for 3 timeframes: 15-min, hourly, daily.\n\nSTEP 2 \u2014 RSI CALCULATION (per timeframe):\navg_gain = ewma(gains, 14) | avg_loss = ewma(losses, 14)\nRSI = 100 - 100/(1 + avg_gain/avg_loss)\nCompute: rsi_15m, rsi_1h, rsi_daily\n\nSTEP 3 \u2014 DIVERGENCE:\nbullish_div = price new low BUT rsi higher low (daily)\nbearish_div = price new high BUT rsi lower high\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nA: Per-timeframe:\n  RSI < 20 \u2192 +1.0 | 20-30 \u2192 +0.6 | 30-40 \u2192 +0.2\n  40-60 \u2192 0.0 | 60-70 \u2192 -0.2 | 70-80 \u2192 -0.6 | >80 \u2192 -1.0\n\nB: Weighted consensus:\n  tf_score = 0.2\u00d7rsi_15m + 0.3\u00d7rsi_1h + 0.5\u00d7rsi_daily\n\nC: Consensus bonus:\n  All 3 agree \u2192 \u00d71.5 | 2 of 3 \u2192 \u00d71.2 | no agree \u2192 \u00d70.7\n\nD: Divergence:\n  Bullish div \u2192 +0.3 | Bearish div \u2192 -0.3\n\nFINAL: clamp(tf_score \u00d7 consensus + div_bonus, \u00b11.0)\nWeight doubles when GEX (#11) = MEAN_REVERT mode.",
         edge: "Nifty RSI(14) daily < 28 has produced positive 5-day returns in 72% of historical instances. Add hourly RSI < 25 confirmation → jumps to 80%. The 2-period RSI is even better for intraday.",
         timeframe: "Real-time for intraday, daily for swing",
       },
@@ -1743,7 +1749,7 @@ const top30Data = [
         why: "Institutional benchmark. Most institutional orders execute at VWAP. When Nifty deviates significantly from VWAP, institutions pull it back.",
         formula: "(Current Nifty Price - Session VWAP) / Session VWAP × 100",
         dataSource: "Computed from tick/minute data. Broker APIs provide VWAP. Can compute from OHLCV data.",
-        implementation: "Calculate running VWAP from 9:15 AM. Track: deviation %, VWAP slope (bullish/bearish day), number of VWAP crosses (many crosses = range day). Key level: >0.4% deviation = mean reversion opportunity.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\n1-min OHLCV from broker API starting 9:15 AM.\n\nSTEP 2 \u2014 VWAP:\ntypical_price = (H+L+C)/3\nvwap = cumsum(typical_price \u00d7 volume) / cumsum(volume)\nReset daily at 9:15.\n\nSTEP 3 \u2014 FEATURES:\ndeviation_pct = (price - vwap) / vwap \u00d7 100\nvwap_slope = 30-min regression slope\ncross_count = times price crossed VWAP today\natr_used_pct = (day_high - day_low) / ATR_14d \u00d7 100\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nVWAP is INTRADAY mean-reversion. Sign is INVERTED.\n\nA: Deviation (primary):\n  > +0.6% \u2192 -0.8 | +0.4 to +0.6% \u2192 -0.5 | +0.2 to +0.4% \u2192 -0.2\n  \u00b10.2% \u2192 0.0 | -0.4 to -0.2% \u2192 +0.2\n  -0.6 to -0.4% \u2192 +0.5 | < -0.6% \u2192 +0.8\n\nB: Time amplifier:\n  Before 11:30 \u2192 \u00d70.5 | 11:30-1:00 \u2192 \u00d70.8\n  1:00-2:30 PM \u2192 \u00d71.3 (PEAK reversion) | After 2:30 \u2192 \u00d70.7\n\nC: Range exhaustion:\n  ATR used > 80% \u2192 \u00d71.5 (range done, strong reversion)\n  ATR used < 40% \u2192 \u00d70.5 (range not done, trend may continue)\n\nD: Cross count regime:\n  > 5 crosses \u2192 range day \u00d71.3 | < 2 crosses \u2192 trend day \u00d70.5\n\nFINAL: clamp(A \u00d7 B \u00d7 C \u00d7 D, \u00b11.0)\nIntraday only. Not in daily composite. Used for entry timing.",
         edge: "Nifty reverts to VWAP in afternoon session (1-2:30 PM) about 65% of days. Deviation > 0.5% from VWAP by 12 PM → fade trade with 2:1 reward/risk targeting VWAP.",
         timeframe: "Intraday only — resets each session",
       },
@@ -1755,7 +1761,7 @@ const top30Data = [
         why: "DIIs (mutual funds, insurance) are the counterweight to FII. When FII sells and DII buys aggressively, it creates a FLOOR. Understanding both flows gives you the full picture.",
         formula: "DII Buy Value - DII Sell Value (cash segment)",
         dataSource: "NSE → FII/DII data. Same source as FII data. Published daily. Free.",
-        implementation: "Track alongside FII data. Key metric: FII-DII Divergence = FII net - DII net. When divergence is extreme (FII selling ₹5000cr+ while DII buying ₹4000cr+), a turning point is near. Also track SIP flow trend as DII floor.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nSame source as Signal #1 (NSE FII/DII daily).\n\nSTEP 2 \u2014 FEATURES:\ndii_net = dii_buy - dii_sell\nfii_dii_divergence = fii_net - dii_net\ndivergence_5d = rolling_sum(divergence, 5)\ndivergence_percentile = rank(abs(divergence_5d), 252d)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: DII direction:\n  dii_10d > \u20b95000cr \u2192 +0.3 (strong floor)\n  \u20b91000-5000cr \u2192 +0.1 | \u00b11000cr \u2192 0.0\n  < -\u20b91000cr \u2192 -0.2 (DII selling = very bad)\n\nB: FII-DII divergence (most important):\n  FII selling >3000cr AND DII buying >3000cr (5d) \u2192 +0.5\n  (Max divergence = turning point)\n  FII buying AND DII selling \u2192 -0.3 (trend continuation)\n  Both buying \u2192 +0.2 | Both selling \u2192 -0.5 (capitulation)\n\nC: Extremity bonus:\n  divergence_percentile > 90% \u2192 \u00d71.5 (historic extreme)\n\nFINAL: clamp(A + B \u00d7 C, \u00b11.0)\nPart of Flow 20% bucket (20% share = 4% effective).",
         edge: "Maximum FII-DII divergence events (top 10% of divergence) have preceded Nifty reversals within 5-10 sessions 70% of the time. DII can't reverse FII-driven trends, but they cushion the fall.",
         timeframe: "Daily, swing-trade horizon",
       },
@@ -1767,7 +1773,7 @@ const top30Data = [
         why: "FII India allocation decisions are in DOLLARS. Weak INR = losses for FII even if Nifty rises → FII sells. Strong INR = FII equity gains amplified → FII stays/buys more. Currency is the hidden driver.",
         formula: "USD/INR spot, daily change %, 20-day trend (slope), RBI intervention level estimate",
         dataSource: "NSE Currency segment, RBI reference rate, broker APIs. Free.",
-        implementation: "Track: spot level, daily change, 20d EMA slope, distance from 200 DMA (trend), 1-month forward premium (RBI intervention proxy). Alert: INR depreciation > 0.5% in a day = Nifty headwind.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nFetch USD/INR from RBI reference rate or NSE currency segment.\n\nSTEP 2 \u2014 FEATURES:\ndaily_change_pct = (today - yesterday) / yesterday \u00d7 100\n5d_change_pct = (today - 5d_ago) / 5d_ago \u00d7 100\n20d_ema_slope = direction of 20-day EMA\ninr_vol = 20d std dev of daily changes\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nWeak INR = bearish for Nifty. Sign INVERTED.\n\nA: Daily change (50%):\n  INR appreciates > 0.5% \u2192 +0.5 | 0.2-0.5% \u2192 +0.3\n  Stable \u00b10.1% \u2192 0.0\n  Depreciates 0.2-0.5% \u2192 -0.4 | >0.5% \u2192 -0.7 | >1% \u2192 -1.0\n\nB: Trend (50%):\n  20d EMA falling (INR strengthening) \u2192 +0.3\n  Flat \u2192 0.0 | Rising (weakening) \u2192 -0.3\n\nC: Vol penalty:\n  inr_vol > 90th percentile \u2192 \u00d71.3 (amplify signal)\n\nFINAL: clamp(0.5\u00d7A + 0.5\u00d7B, \u00b11.0) \u00d7 vol_mult\nPart of Macro 10% bucket (40% share = 4% effective).",
         edge: "Sharp INR depreciation (>1% in a week) preceded Nifty corrections in 65% of instances. INR stability + FII buying = strongest bullish combination. INR weakness + FII selling = stay flat.",
         timeframe: "Daily for trend, real-time on volatile days",
       },
@@ -1779,7 +1785,7 @@ const top30Data = [
         why: "India imports ~85% of its oil. Crude is the single biggest macro risk for Nifty. Rising crude = current account pressure = INR weakness = FII outflow = Nifty fall. The chain is direct and reliable.",
         formula: "Brent Crude price (USD), 5-day change %, 20-day trend, distance from $80/$90/$100 thresholds",
         dataSource: "Any financial data provider. Yahoo Finance, TradingView, MCX. Free.",
-        implementation: "Track: absolute level, 5d/20d change, proximity to key thresholds ($80 = comfort, $90 = caution, $100 = alarm). Compute: Crude-INR combined stress index (crude rising + INR weakening simultaneously). Alert: Crude > $90 + INR weakening = maximum macro headwind.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nBrent crude daily from Yahoo Finance or TradingView.\n\nSTEP 2 \u2014 FEATURES:\n5d_change = % change over 5 days\n20d_change = % change over 20 days\nzone = COMFORT (<$80) | CAUTION ($80-90) | ALARM ($90-100) | CRISIS (>$100)\ncrude_inr_stress = crude_5d_change + usdinr_5d_change\nstress_zscore = zscore(stress, 60d)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nRising crude = bearish for Nifty.\n\nA: Level (40%):\n  < $70 \u2192 +0.5 | $70-80 \u2192 +0.3 | $80-85 \u2192 0.0\n  $85-90 \u2192 -0.3 | $90-100 \u2192 -0.6 | >$100 \u2192 -1.0\n\nB: Momentum (30%):\n  5d < -5% \u2192 +0.4 | -2 to -5% \u2192 +0.2 | \u00b12% \u2192 0.0\n  +2 to +5% \u2192 -0.2 | >+5% \u2192 -0.4\n\nC: Crude-INR stress (30%):\n  zscore > 2.0 \u2192 -0.3 (double stress)\n  zscore < -2.0 \u2192 +0.3 (double relief)\n\nFINAL: clamp(0.4\u00d7A + 0.3\u00d7B + 0.3\u00d7C, \u00b11.0)\nPart of Macro 10% (35% share = 3.5% effective).",
         edge: "Crude above $95 for 10+ days has historically preceded Nifty corrections. Below $75 = macro tailwind, Nifty tends to outperform EM. Crude-INR combined stress index > 2σ = reduce exposure.",
         timeframe: "Daily, medium-term macro signal",
       },
@@ -1791,7 +1797,7 @@ const top30Data = [
         why: "Simplest and most robust statistical signal. When Nifty is 2+ standard deviations from its mean, mathematical reversion probability is very high.",
         formula: "(Nifty Close - 20-Day SMA) / 20-Day Standard Deviation",
         dataSource: "Computed from Nifty closing prices. Any data source works.",
-        implementation: "Compute daily. Track: Z-score level, Z-score trend (rising/falling), consecutive days at extreme (>2 or <-2). Zone: Z > 2.0 = overbought, Z < -2.0 = oversold, Z > 2.5 = strongly overbought, Z < -2.5 = strongly oversold.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nNifty daily closes. Need 20+ trading days.\n\nSTEP 2 \u2014 COMPUTATION:\nz = (close - SMA_20) / StdDev_20\nz_trend = z_today - z_yesterday\nz_extreme_days = consecutive days abs(z) > 2.0\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nPure mean reversion. Sign INVERTED (high z = expect pullback).\n\nA: Level:\n  z < -2.5 \u2192 +1.0 | -2.5 to -2.0 \u2192 +0.7 | -2.0 to -1.5 \u2192 +0.4\n  -1.5 to -1.0 \u2192 +0.2 | -1.0 to +1.0 \u2192 0.0\n  +1.0 to +1.5 \u2192 -0.2 | +1.5 to +2.0 \u2192 -0.4\n  +2.0 to +2.5 \u2192 -0.7 | > +2.5 \u2192 -1.0\n\nB: Duration:\n  extreme_days \u2265 3 \u2192 \u00d71.3 (rare, strong reversion)\n  extreme_days \u2265 5 \u2192 \u00d71.0 (may be regime change)\n\nC: Trend confirmation:\n  z moving toward zero \u2192 \u00d71.2 (reversion started)\n  z moving away from zero \u2192 \u00d70.8 (still extending)\n\nFINAL: clamp(level \u00d7 duration \u00d7 trend, \u00b11.0)\nWeight doubles when GEX = MEAN_REVERT mode.",
         edge: "Nifty Z-score < -2.0 → positive 5-day return 78% of the time. Z-score < -2.5 → positive 5-day return 85% of the time. Average reversion magnitude: 1.2% over 5 sessions. Very reliable for swing trades.",
         timeframe: "Daily, swing-trade signal (3-7 day horizon)",
       },
@@ -1803,7 +1809,7 @@ const top30Data = [
         why: "The first 15 minutes absorb overnight information (GIFT Nifty gap, FII positioning, global cues). This range sets the battlefield for the day.",
         formula: "First 15-minute candle High and Low (9:15-9:30 AM) as breakout levels",
         dataSource: "Live market data from broker API. 15-minute OHLCV.",
-        implementation: "Record 9:30 AM high and low. Breakout: price closes above high on 5-min = go long. Closes below low = go short. Filter: Opening range width vs 20-day average ATR. Narrow OR (<40% of avg ATR) = high breakout probability. Wide OR (>80% of avg ATR) = likely range day.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\n1-min bars from broker API. At 9:30 AM record:\nor_high = max(highs, 9:15-9:30)\nor_low = min(lows, 9:15-9:30)\nor_width = or_high - or_low\n\nSTEP 2 \u2014 FEATURES:\nor_vs_atr = or_width / ATR_14d\nor_type = NARROW (<0.4) | NORMAL | WIDE (>0.8)\nbreakout_up = 5-min close > or_high\nbreakout_down = 5-min close < or_low\nbreakout_vol = volume_at_break / avg_first_30min_vol_20d\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Direction:\n  Breakout up + confirmed \u2192 +0.6 | Down + confirmed \u2192 -0.6\n  No breakout \u2192 0.0 | Failed breakout \u2192 flip sign \u00d70.5\n\nB: OR type:\n  NARROW \u2192 \u00d71.5 (compressed = strong breakout)\n  NORMAL \u2192 \u00d71.0 | WIDE \u2192 \u00d70.3 (move may be done)\n\nC: Volume: > 1.5x avg \u2192 \u00d71.3 | < 0.8x \u2192 \u00d70.5\n\nD: Pre-market alignment:\n  Matches gap direction \u2192 \u00d71.3 | Contradicts \u2192 \u00d70.7\n\nFINAL: clamp(A \u00d7 B \u00d7 C \u00d7 D, \u00b11.0)\nINTRADAY entry signal. Fires once at ~9:35 AM.",
         edge: "Narrow opening range + breakout = trends for the day 70% of the time. Wide opening range = often the day's high/low is already set by 9:45 AM. Combine with GIFT Nifty gap direction for confirmation.",
         timeframe: "Intraday, signal generated at 9:30 AM",
       },
@@ -1815,7 +1821,7 @@ const top30Data = [
         why: "Tells you whether a move is FRESH (new positions being built) or EXHAUSTING (old positions being closed). Fresh moves continue. Exhausted moves reverse. This is the single biggest edge in reading Indian options.",
         formula: "At each strike: classify OI change + price change into Long Buildup / Short Buildup / Long Unwinding / Short Covering",
         dataSource: "NSE option chain + previous day OI. Broker APIs for real-time snapshots.",
-        implementation: "For top 20 strikes by OI: track OI change and premium change. Classify each strike. Aggregate: how many strikes show Long Buildup vs Short Buildup vs Unwinding. Create net buildup score. Track intraday shifts in classification.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nOption chain snapshots every 30 min (Signal #3).\nFor top 20 strikes: oi_now, oi_prev, premium_now, premium_prev.\n\nSTEP 2 \u2014 PER-STRIKE CLASSIFICATION:\npremium\u2191 + oi\u2191 = LONG_BUILDUP\npremium\u2193 + oi\u2191 = SHORT_BUILDUP\npremium\u2191 + oi\u2193 = SHORT_COVERING\npremium\u2193 + oi\u2193 = LONG_UNWINDING\n\nSTEP 3 \u2014 AGGREGATION:\nCALL side: long_buildup calls (bullish) + short_buildup calls (bearish)\nPUT side: short_buildup puts (bullish) + long_buildup puts (bearish)\nbullish_strikes = call_long_buildup + put_short_buildup\nbearish_strikes = call_short_buildup + put_long_buildup\nnet_buildup = bullish - bearish\nunwinding_count = total covering + unwinding\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nA: Net buildup:\n  \u22658 bullish \u2192 +0.8 | 5-7 \u2192 +0.5 | 3-4 \u2192 +0.2\n  \u00b12 \u2192 0.0 | -3 to -4 \u2192 -0.2 | -5 to -7 \u2192 -0.5 | \u2264-8 \u2192 -0.8\n\nB: Unwinding filter:\n  >12 unwinding \u2192 \u00d70.5 (exhausting, don\u2019t chase)\n  <5 unwinding \u2192 \u00d71.3 (fresh buildup)\n\nC: Intraday shift:\n  net_buildup FLIPPED sign in 2hrs \u2192 \u00b10.3 in new direction\n\nFINAL: clamp(A \u00d7 B + C, \u00b11.0)\nPart of Options 15% (30% share = 4.5% effective).",
         edge: "If 70%+ of high-OI strikes show Long Buildup = very strong trend, don't fade. If 60%+ show Short Covering (price up but OI falling) = rally is weak, will fade. Use to distinguish real breakouts from fake ones.",
         timeframe: "Real-time with hourly OI snapshots, daily for big picture",
       },
@@ -1827,7 +1833,7 @@ const top30Data = [
         why: "Controls global risk appetite and EM fund flows. When US yields rise, money flows FROM India TO US bonds. This is the single most important global variable for Indian equity markets.",
         formula: "US 10Y yield level, daily change, 5-day change, distance from key thresholds (4.0%, 4.5%, 5.0%)",
         dataSource: "FRED, Yahoo Finance, TradingView, any financial data provider. Free.",
-        implementation: "Track: level, daily change (bps), 5d rolling change, trend (20 DMA slope). Alert: >10bps single-day spike = EM stress. Compute: India-US 10Y spread (carry trade signal). Track correlation with FII flows (rolling 60d).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nUS 10Y from FRED (DGS10) or Yahoo (^TNX).\nIndia 10Y from RBI/CCIL.\n\nSTEP 2 \u2014 FEATURES:\nus10y_daily_change_bps = (today - yesterday) \u00d7 100\nus10y_5d_change_bps = (today - 5d_ago) \u00d7 100\nindia_us_spread = india_10y - us_10y\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nRising US yields = bearish for India. Sign INVERTED.\n\nA: Level (40%):\n  < 3.5% \u2192 +0.5 | 3.5-4.0% \u2192 +0.2 | 4.0-4.3% \u2192 0.0\n  4.3-4.5% \u2192 -0.2 | 4.5-5.0% \u2192 -0.5 | >5% \u2192 -1.0\n\nB: Momentum (40%):\n  5d_change < -15bps \u2192 +0.3 | -5 to -15 \u2192 +0.1 | \u00b15 \u2192 0.0\n  +5 to +15 \u2192 -0.1 | +15 to +25 \u2192 -0.3\n  > +25bps \u2192 -0.6 (rapid spike = EM panic)\n\nC: Spread (20%):\n  india-us > 3.0% \u2192 +0.1 (good carry)\n  india-us < 1.5% \u2192 -0.2 (low carry)\n\nFINAL: clamp(0.4\u00d7A + 0.4\u00d7B + 0.2\u00d7C, \u00b11.0)\nPart of US/Global 10% (50% share = 5% effective).",
         edge: "US 10Y spike > 20bps in a week preceded Nifty weakness in 70% of instances. US 10Y above 4.5% = persistent FII headwind for India. Below 3.5% = EM tailwind. The spread vs India 10Y matters for carry trade flows.",
         timeframe: "Daily, medium-term macro signal",
       },
@@ -1849,7 +1855,7 @@ const top30Data = [
         why: "This is where you deploy Claude/LLMs. Process Indian financial news faster than any human can read. Sentiment CHANGE is more predictive than absolute level.",
         formula: "Aggregate sentiment score from top 5 Indian financial news sources, scored -1 to +1 per headline",
         dataSource: "RSS feeds from ET, Moneycontrol, Livemint, BS, CNBC-TV18. Scrape every 15 minutes.",
-        implementation: "Use Claude API to score each headline (-1 to +1). Aggregate by hour. Track: current sentiment, 24-hour change, 5-day trend. Flag: sudden negative spike (>2σ from 5d average) = potential sell-off. Create sector-level sentiment too.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nScrape RSS feeds every 15 min: ET, Moneycontrol, Livemint, BS, CNBC-TV18.\nStore: timestamp, source, headline, url.\n\nSTEP 2 \u2014 LLM SCORING:\nFor each headline, call Claude API:\n  Prompt: \"Score this Indian financial headline for Nifty impact. JSON only: {score: float(-1 to 1), confidence: float(0 to 1), sector: string}\"\nParse and store.\n\nSTEP 3 \u2014 AGGREGATION:\nhourly = weighted_mean(scores, weights=confidences)\ndaily = weighted_mean(all_today)\n5d_ma = rolling_mean(daily, 5)\nsentiment_change = daily - 5d_ma\nsentiment_spike = abs(change) > 2\u00d7std(daily, 20d)\n\nSTEP 4 \u2014 SCORING (-1.0 to +1.0):\nA: Level: > +0.5 \u2192 +0.5 | +0.2 to +0.5 \u2192 +0.3 | \u00b10.2 \u2192 0.0\n  -0.5 to -0.2 \u2192 -0.3 | < -0.5 \u2192 -0.5\n\nB: CHANGE (more important):\n  change > +0.3 \u2192 +0.3 | < -0.3 \u2192 -0.3\n\nC: Spike detection:\n  Negative spike \u2192 -0.4 | Positive spike \u2192 +0.4\n\nFINAL: clamp(A + B + C, \u00b11.0)\nPart of Sentiment 10% (50% share = 5% effective).",
         edge: "Sentiment shift from positive to negative (not just negative sentiment) predicts next-day Nifty direction with ~62% accuracy. Combine with FII flow for confirmation → accuracy rises to ~70%.",
         timeframe: "Real-time (15-minute refresh), daily aggregate for model input",
       },
@@ -1861,7 +1867,7 @@ const top30Data = [
         why: "India's weekly and monthly expiry cycle creates predictable pinning behavior. In the world's most active options market, writers have enormous incentive to pin price at max OI/max pain.",
         formula: "Composite of: days to expiry + distance to max pain + OI concentration at nearby strikes + GEX sign",
         dataSource: "Computed from option chain data + max pain calculation.",
-        implementation: "Score 0-100 based on: DTE weight (closer = higher pin risk), distance to max pain (closer = higher), OI concentration ratio at nearest strikes, positive GEX (dealers suppress moves). Tuesday morning pin risk > 70 = high probability of pinning. Trade mean reversion toward pin target.",
+        implementation: "STEP 1 \u2014 INPUTS: max_pain (#8), OI distribution (#3), GEX (#11).\n\nSTEP 2 \u2014 PIN RISK SCORE (0-100):\nA \u2014 DTE (0-30 pts): 5+d\u21920 | 3-4d\u219210 | 2d\u219220 | 1d(Mon)\u219225 | expiry(Tue)\u219230\nB \u2014 Distance (0-30): >2 ATR\u21920 | 1.5-2\u21925 | 1-1.5\u219215 | 0.5-1\u219225 | <0.5\u219230\nC \u2014 OI concentration (0-20): top3 >50%\u219220 | 30-50%\u219212 | <30%\u21925\n  Bonus: max_pain = max_OI \u2192 +5\nD \u2014 GEX (0-20): strongly positive\u219220 | weakly pos\u219210 | negative\u21920\n\npin_risk = A + B + C + D\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\n  pin_risk > 75:\n    ABOVE max_pain \u2192 -0.5 | BELOW \u2192 +0.5 | AT mp \u2192 0.0 (sell straddle)\n  pin_risk 50-75: half magnitude\n  pin_risk < 50: score = 0.0 (ignore)\n\nWEIGHT: 0% normally. 5% when pin_risk>50. 10% when >75.\nOverrides other signals in last 2 days before expiry.",
         edge: "On Tuesdays with pin risk score > 75, Nifty closed within 30 points of highest OI strike 65% of the time. Sell straddles at the pin target on Monday afternoon for Tuesday expiry. Very consistent income strategy.",
         timeframe: "Daily computation, strongest signal Mon-Thu of expiry week",
       },
@@ -1873,7 +1879,7 @@ const top30Data = [
         why: "When implied vol is much higher than realized vol, option sellers are being overpaid. This premium is the most consistent source of income in options trading — it exists because people overpay for insurance.",
         formula: "(India VIX - 21-Day Realized Volatility) — computed in annualized vol points",
         dataSource: "India VIX from NSE + computed realized vol from Nifty closing prices.",
-        implementation: "Compute daily. Track: spread level, percentile rank (252d), Z-score. Zones: spread > 5 vol points = options very rich (sell). Spread < 1 = options cheap (buy or don't sell). Spread negative = rare, vol event underway (buy protection).",
+        implementation: "STEP 1 \u2014 COMPUTATION:\nrv_21d = annualized std(daily returns, 21) \u00d7 \u221a252 \u00d7 100\niv = India VIX\nspread = iv - rv_21d (vol points)\nspread_percentile = rank in 252 days\n\nSTEP 2 \u2014 SCORING (-1.0 to +1.0):\nScores OPTION PRICING, not direction.\n\n  spread > 8 \u2192 +1.0 (extremely rich \u2014 sell aggressively)\n  5-8 \u2192 +0.7 | 3-5 \u2192 +0.3\n  1-3 \u2192 0.0 | 0-1 \u2192 -0.3 (cheap \u2014 don\u2019t sell)\n  < 0 \u2192 -0.8 (IV < RV = buy protection NOW)\n\nPercentile adjust:\n  > 80th or < 20th \u2192 \u00d71.3 (extremes more actionable)\n\nUSAGE: STRATEGY SELECTOR (not directional).\n  score > +0.5 \u2192 prefer SELLING strategies\n  score < -0.3 \u2192 prefer BUYING strategies\nNot in directional composite. Used with GEX + VIX regime.",
         edge: "When IV-RV spread is in top quartile, short straddle/strangle strategies on Nifty generate positive returns 75% of weeks. The average variance risk premium in India is ~3-4 vol points — this is your structural edge in option selling.",
         timeframe: "Daily, used for option selling strategy sizing",
       },
@@ -1885,7 +1891,7 @@ const top30Data = [
         why: "Money doesn't leave the market — it rotates. Tracking which sectors FII/DII are rotating INTO tells you where the next Nifty move will come from, since top 5 stocks are 40% of the index.",
         formula: "Relative strength ranking of Nifty sectoral indices (Bank, IT, Pharma, Auto, Metal, FMCG, Realty, Energy, PSU Bank) — 10d and 21d returns",
         dataSource: "NSE sectoral indices. Available freely. Broker APIs provide real-time.",
-        implementation: "Rank sectors by 10d and 21d relative returns. Track: rank changes (which sectors are improving/deteriorating), acceleration (sector moving up 3+ rank positions = strong rotation). Map to Nifty 50 stock weights to predict index impact.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nDaily close for NSE sectoral indices: Bank, IT, Pharma, Auto, Metal, FMCG, Realty, Energy, PSU Bank.\n\nSTEP 2 \u2014 FEATURES:\nFor each sector: return_10d, return_21d, rank_10d, rank_change\nNifty weights: Bank~35%, IT~14%, Oil~12%, FMCG~10%, Auto~6%\nleadership = RISK_ON if Bank/Auto/Metal lead else DEFENSIVE\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Leadership type:\n  RISK_ON (cyclicals leading) \u2192 +0.4\n  DEFENSIVE (IT/Pharma/FMCG leading) \u2192 -0.2\n  MIXED \u2192 0.0\n\nB: Bank Nifty dominance (35% of Nifty):\n  Bank rank = 1 \u2192 +0.3 | Bank rank \u2265 7 \u2192 -0.3\n\nC: Rotation speed:\n  Any sector jumped 3+ ranks in 1 week \u2192 \u00b10.2\n\nD: Breadth: 6+ sectors positive \u2192 +0.2 | 6+ negative \u2192 -0.2\n\nFINAL: clamp(A + B + C + D, \u00b11.0)\nModifies overall momentum signal weight.",
         edge: "When Bank Nifty (40% of Nifty weight) is the top-ranked sector by 10d momentum, Nifty outperforms 68% of the time. When IT + Pharma lead (defensive rotation), Nifty is likely in late-cycle. Sector leadership change predicts regime change.",
         timeframe: "Daily update, medium-term signal (1-4 weeks)",
       },
@@ -1897,7 +1903,7 @@ const top30Data = [
         why: "Credit markets see trouble BEFORE equity markets — always. Widening credit spreads are the earliest warning of risk-off that will eventually hit India via FII outflows.",
         formula: "US High Yield OAS (Option-Adjusted Spread), daily change, 5d/20d trend",
         dataSource: "FRED (Federal Reserve Economic Data) — free. Bloomberg for real-time. ICE BofA indices.",
-        implementation: "Track: US HY OAS level, daily change, 20d trend. Alert: spread widening > 20bps in a week = global risk-off brewing. Compute: correlation with FII India flows (rolling 60d). Spreads widening + FII selling India = confirmed risk-off.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nUS HY OAS from FRED (series: BAMLH0A0HYM2). Daily.\n\nSTEP 2 \u2014 FEATURES:\nhy_level (bps), hy_5d_change, hy_20d_trend\nhy_percentile = rank in 252 days\nhy_fii_corr = rolling_corr(hy_5d_change, fii_net_5d, 60d)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nWidening = risk-off = bearish for India.\n\nA: Level (40%):\n  < 300bps \u2192 +0.3 | 300-350 \u2192 +0.1 | 350-400 \u2192 0.0\n  400-450 \u2192 -0.3 | 450-500 \u2192 -0.6 | >500 \u2192 -1.0\n\nB: Momentum (40%):\n  5d_change < -15bps \u2192 +0.3 | -5 to -15 \u2192 +0.1 | \u00b15 \u2192 0.0\n  +5 to +15 \u2192 -0.2 | >+15 \u2192 -0.4 | >+30 \u2192 -0.7\n\nC: FII confirmation (20%):\n  HY widening + FII selling \u2192 \u00d71.3 (confirmed risk-off)\n\nFINAL: clamp(0.4\u00d7A + 0.4\u00d7B + 0.2\u00d7C, \u00b11.0)\nEARLY WARNING: 1-3 week lead time.\nPart of US/Global 10% (30% = 3% effective).",
         edge: "US HY spread widening preceded major Nifty sell-offs by 1-3 weeks in 2018, 2020, 2022, and 2023. Early warning: spread crosses above 400bps = high alert. Above 500bps = reduce India equity exposure significantly.",
         timeframe: "Daily, early warning signal (1-3 week lead time)",
       },
@@ -1909,7 +1915,7 @@ const top30Data = [
         why: "India-specific signal due to T+1 settlement. High delivery % = genuine buying with intent to hold. Low delivery % = speculative churning. Separates real demand from noise.",
         formula: "Delivery Quantity / Total Traded Quantity × 100, for Nifty 50 stocks and aggregate",
         dataSource: "NSE Bhavcopy (daily). Published free on NSE website every evening.",
-        implementation: "Compute: aggregate delivery % for Nifty 50 (weighted by turnover). Track: level, 5d/20d moving average, percentile rank. High delivery (>45%) on up days = strong accumulation. Low delivery (<30%) on up days = speculative rally (fragile).",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nNSE Bhavcopy daily. For each Nifty 50 stock: delivery_qty, total_qty.\n\nSTEP 2 \u2014 FEATURES:\nagg_delivery_pct = turnover-weighted delivery %\ndelivery_5d_ma, delivery_20d_ma, delivery_percentile (60d)\nnifty_direction = UP or DOWN today\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Direction + delivery combo:\n  Nifty UP + delivery >45% \u2192 +0.6 (genuine buying)\n  Nifty UP + delivery 35-45% \u2192 +0.2 | UP + <35% \u2192 -0.3 (speculative!)\n  Nifty DOWN + delivery >45% \u2192 -0.6 (genuine selling)\n  DOWN + 35-45% \u2192 -0.2 | DOWN + <35% \u2192 +0.1 (speculative)\n\nB: Trend: rising delivery + rising Nifty (3d) \u2192 +0.2\n  falling delivery + rising Nifty \u2192 -0.2\n\nC: Extremes: percentile >90 \u2192 \u00d71.4 | <10 \u2192 \u00d71.3\n\nFINAL: clamp(A + B \u00d7 C, \u00b11.0)\nCONFIRMATION signal: validates other signals.\nHigh delivery + FII buying \u2192 high confidence.\nLow delivery + FII buying \u2192 reduce confidence 30%.",
         edge: "Rising Nifty + rising aggregate delivery % = sustainable rally (accumulation). Rising Nifty + falling delivery % = speculative rally that will correct. Delivery % > 50% on a big up day = institutional buying confirmed.",
         timeframe: "Daily (end-of-day data), swing confirmation signal",
       },
@@ -1921,7 +1927,7 @@ const top30Data = [
         why: "Not just a signal — it's your POSITION SIZING ENGINE. Every trade's size should be calibrated to current volatility. This single implementation prevents most oversize losses.",
         formula: "ATR(14) on daily chart. Position multiplier = Median ATR (63d) / Current ATR",
         dataSource: "Computed from daily OHLC. Any data source.",
-        implementation: "Compute: daily ATR(14), ATR percentile (63d and 252d), ATR ratio (5d ATR / 21d ATR for expansion/contraction detection). Position size = Base risk amount / (ATR × multiplier × lot size). Auto-scale: ATR in top quartile → positions 30-40% smaller.",
+        implementation: "STEP 1 \u2014 COMPUTATION:\ntrue_range = max(H-L, abs(H-prev_C), abs(L-prev_C))\natr_14 = ema(true_range, 14) | atr_5 = ema(TR, 5) | atr_21 = ema(TR, 21)\natr_percentile_63d, atr_percentile_252d\natr_ratio = atr_5 / atr_21 (>1 = expanding, <1 = contracting)\nmedian_atr = median(atr_14, 63d)\nposition_multiplier = median_atr / atr_14\n\nSTEP 2 \u2014 POSITION SIZING:\nbase_risk = capital \u00d7 risk_pct\nadjusted_risk = base_risk \u00d7 confidence_multiplier\nstop_distance = atr_14 \u00d7 stop_mult (1.5 intraday / 2.0 swing / 2.5 positional)\nrisk_per_lot = stop_distance \u00d7 65 (lot size)\nmax_lots = floor(adjusted_risk / risk_per_lot)\nfinal_lots = min(max_lots, vix_regime_cap)\n\nSTEP 3 \u2014 OUTPUT (multiplier, not \u00b11.0):\n  atr_percentile < 20 \u2192 \u00d71.4 (low vol, bigger size)\n  20-40 \u2192 \u00d71.2 | 40-60 \u2192 \u00d71.0 | 60-80 \u2192 \u00d70.8\n  > 80 \u2192 \u00d70.6 (high vol, smaller size)\n\nSQUEEZE DETECTION:\n  atr_ratio < 0.7 AND BB inside Keltner \u2192 SQUEEZE active\n  Squeeze release (ratio crosses 1.0) \u2192 expect big move (timing signal).\n\nNot directional. Applied as multiplier to ALL positions.",
         edge: "ATR-based position sizing reduces max drawdown by 25-35% compared to fixed-lot sizing in backtests. ATR compression (low ATR percentile) predicts breakouts — Bollinger squeeze inside Keltner channel is the classic setup.",
         timeframe: "Daily computation, applied to every trade entry",
       },
@@ -1933,7 +1939,7 @@ const top30Data = [
         why: "During quarterly results season (4 times/year), the running tally of beats vs misses predicts whether Nifty will rally or sell through the season. IT bellwethers (TCS, Infy) set the tone.",
         formula: "Number of Nifty 50 companies that beat EPS consensus / Total that have reported so far",
         dataSource: "Moneycontrol, Trendlyne, or broker research for consensus + actuals. Updated as each company reports.",
-        implementation: "Track as results come in (typically mid-Jan, mid-Apr, mid-Jul, mid-Oct). Compute: running beat %, miss %, in-line %. Compare to previous quarter's final ratio. If current quarter tracking better = bullish momentum through season. Track by sector too.",
+        implementation: "STEP 1 \u2014 DATA PIPELINE:\nMaintain Nifty 50 watchlist with reporting dates.\nPost-results: record company, sector, reported_eps, consensus_eps.\nsurprise = (reported - consensus) / abs(consensus) \u00d7 100\nbeat = surprise > +5% | miss = surprise < -5%\n\nSTEP 2 \u2014 FEATURES:\nrunning_beat_pct = beats / reported \u00d7 100\nprev_quarter_beat_pct (for comparison)\nbeat_trend = current - previous quarter\nbellwether = TCS + Infosys result (sets tone)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Beat rate:\n  > 70% \u2192 +0.7 | 55-70% \u2192 +0.3 | 45-55% \u2192 0.0\n  30-45% \u2192 -0.3 | < 30% \u2192 -0.7\n\nB: Trend vs prev quarter:\n  beat_trend > +10% \u2192 +0.3 | < -10% \u2192 -0.3\n\nC: Bellwether: Both beat \u2192 +0.2 | Both miss \u2192 -0.3\n\nD: Sample size:\n  < 5 reported \u2192 \u00d70.3 | 5-15 \u2192 \u00d70.7 | >15 \u2192 \u00d71.0\n\nFINAL: clamp((A + B + C) \u00d7 D, \u00b11.0)\nSEASONAL: 0% weight outside earnings. 5-8% during active season (4x/year).",
         edge: "If beat ratio is >65% after first 15 companies report, Nifty tends to rally through the rest of results season. If miss ratio is >40% early on, defensive positioning works. TCS and Infosys results (first to report) set sentiment for the entire season.",
         timeframe: "Quarterly event (4 times/year), tracked over 3-4 week reporting season",
       },
@@ -1945,7 +1951,7 @@ const top30Data = [
         why: "The market itself tells you how much Nifty is expected to move. The ATM straddle price = the market's consensus on the expected range. Trade against this when it's wrong.",
         formula: "ATM Call Price + ATM Put Price = Expected Move in points. Also compute as % of Nifty level.",
         dataSource: "NSE option chain — ATM strike, add call + put premium. Real-time.",
-        implementation: "Track for weekly and monthly expiry. Compare: expected move vs actual move (was market right?). If market consistently overestimates moves = sell straddles. Historical accuracy rate: what % of weeks does Nifty stay within the straddle-implied range?",
+        implementation: "STEP 1 \u2014 COMPUTATION:\nstraddle = ATM_call_price + ATM_put_price\nexpected_move = straddle \u00d7 0.85 (weekly adjustment)\nrange_upper = spot + expected_move | range_lower = spot - expected_move\nstraddle_pct = straddle / spot \u00d7 100\nstraddle_percentile = rank in last 52 weeks\nhistorical_accuracy = % of past weeks price stayed within range\n\nSTEP 2 \u2014 SCORING (-1.0 to +1.0):\nSTRATEGY SELECTOR, not directional.\n\nA: Richness:\n  percentile > 80 \u2192 +0.8 (very rich \u2014 SELL)\n  60-80 \u2192 +0.4 | 40-60 \u2192 0.0 | 20-40 \u2192 -0.4\n  < 20 \u2192 -0.8 (very cheap \u2014 BUY)\n\nB: Historical overestimation:\n  accuracy > 75% \u2192 +0.2 (market overestimates, sell bias)\n  accuracy < 55% \u2192 -0.2 (market underestimates)\n\nC: Event check:\n  Known event in 3 days \u2192 reduce sell signal by 50%\n  No events \u2192 full strength\n\nFINAL: clamp(A + B + C, \u00b11.0)\nStrategy modifier: positive \u2192 prefer selling. Negative \u2192 prefer buying.",
         edge: "Nifty stays within the weekly straddle-implied range ~68% of weeks (consistent with 1σ). This means selling weekly strangles outside the expected range wins most weeks. The edge is in identifying WHICH weeks will be outliers (use VIX regime + event calendar).",
         timeframe: "Weekly computation, options strategy signal",
       },
@@ -1957,7 +1963,7 @@ const top30Data = [
         why: "Indian corporates must pay advance tax on March 15, June 15, September 15, and December 15. They sell equity to raise cash. This creates PREDICTABLE selling pressure 2-3 days before.",
         formula: "Calendar-based: days to next advance tax date + historical return pattern in that window",
         dataSource: "Fixed dates — no data source needed. Historical Nifty returns around these dates for calibration.",
-        implementation: "Flag: 5 days before each tax date. Track: Nifty return in [-5, -1] and [0, +3] days around each date. The selling window is typically T-3 to T-1. Recovery begins T+1. Compute: average historical return in selling window, win rate of buying on tax date.",
+        implementation: "STEP 1 \u2014 CALENDAR:\nFixed dates: Mar 15, Jun 15, Sep 15, Dec 15.\nCompute: trading_days_to_next_tax_date.\nBuild historical returns around each date (10+ years).\n\nSTEP 2 \u2014 HISTORICAL CALIBRATION:\npre_tax_return = Nifty T-5 to T-1 (expect: -0.5 to -1.0%)\npost_tax_return = Nifty T+0 to T+3 (expect: +0.3 to +0.7%)\nneg_pct = % of times pre_tax was negative (~70%)\n\nSTEP 3 \u2014 SCORING (-1.0 to +1.0):\nA: Time-based activation:\n  > 10 days \u2192 0.0 (inactive)\n  5-10 days \u2192 -0.1 (early warning)\n  T-3 to T-1 (peak selling) \u2192 -0.5\n  T+0 (tax date) \u2192 +0.3 (selling done)\n  T+1 to T+3 (recovery) \u2192 +0.4\n  T+4+ \u2192 0.0 (faded)\n\nB: Historical strength:\n  Multiply by (neg_pct/50 - 1). 70% neg \u2192 \u00d70.4 (strong)\n\nC: Macro overlay:\n  FII selling + tax approaching \u2192 \u00d71.5 (amplified)\n  FII buying + tax approaching \u2192 \u00d70.5 (absorbed)\n\nFINAL: clamp(A \u00d7 B \u00d7 C, \u00b11.0)\nWeight: 0% normally. 3-5% when within 5 days of tax date.",
         edge: "Nifty has been negative in the 3 days before March 15 advance tax date in 70% of years. Average dip: 0.5-1.0%. Buying on the tax date itself and holding for 5 days has been profitable 65% of the time. Simple, mechanical, repeatable.",
         timeframe: "4 times per year, signal active for ~5 days each time",
       },
@@ -2920,9 +2926,1557 @@ EXIT PLAN:
   Total: ₹220 × 65 × 2 lots = ₹28,600
   Plus: avoided losses on reduced long exposure`,
       },
+      {
+        title: "Example 4: No Trade — Dead Zone",
+        tag: "FLAT",
+        tagColor: "#64748b",
+        content: "Mixed signals, nothing clear. The system correctly says WAIT. This is the most important example — a system that trades every day is a bad system.",
+        example: `SCENARIO: Thursday, all signals mixed
+
+PRE-MARKET:
+  FII bought ₹200cr (insignificant)              → +0.1
+  GIFT Nifty: +0.1% gap (noise)                  → 0.0
+  US S&P flat (-0.05%)                            → 0.0
+  India VIX: 15.0 (normal)                        → 0.0
+  FII L/S ratio: 1.6 (neutral zone)               → +0.1
+  PCR: 0.95 (dead neutral)                        → 0.0
+  Futures basis: +0.05% (barely positive)          → +0.1
+  USD/INR: stable                                  → 0.0
+  Crude: $84, flat                                 → 0.0
+  Sector rotation: mixed, no leader                → 0.0
+  
+  Composite Score: +0.07 → DEAD ZONE [-0.15 to +0.15]
+
+DECISION: NO TRADE
+
+  ┌──────────────────────────────────────────────────────┐
+  │ ACTION: NO TRADE                                     │
+  │                                                      │
+  │ Reason: Composite +0.07, inside dead zone.           │
+  │ No edge exists. Any trade is a coin flip.            │
+  │                                                      │
+  │ What to do instead:                                  │
+  │   • Review existing positions (tighten stops)        │
+  │   • Prepare watchlist for tomorrow                   │
+  │   • Wait for FII data at 8:30 PM tonight             │
+  │   • Re-run composite after FII data arrives           │
+  │                                                      │
+  │ Expect NO_TRADE on 40-50% of days.                   │
+  │ This is how you preserve capital for the days         │
+  │ when signals ARE strong (composite > ±0.3).          │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 5: Iron Condor — Pre-RBI Policy",
+        tag: "NEUTRAL INCOME",
+        tagColor: "#ea580c",
+        content: "VIX elevated pre-event, no directional signal, options expensive. Sell premium with defined risk and profit from post-event IV crush.",
+        example: `SCENARIO: Wednesday before RBI MPC announcement (Thursday)
+
+SIGNALS:
+  Directional signals: all near 0.0 (no consensus)
+  India VIX: 21 (fear zone, 80th percentile)         → -0.5
+  IV-RV spread: +0.8 (options extremely rich)
+  Straddle richness: +0.7 (overpriced for event)
+  Composite Score: -0.05 → NEUTRAL
+
+REGIME:
+  VIX: 21 → FEAR → 50% exposure cap
+  GEX: POSITIVE → mean-revert mode
+  IV-RV: +0.8 → SELL_OPTIONS bias
+  Decision: NEUTRAL + FEAR + SELL → IRON CONDOR (defined risk mandatory)
+
+STRIKE SELECTION:
+  Nifty: 22,300
+  Expected move (from rich straddle): ±350 points
+  Max Call OI: 22,700 | Max Put OI: 21,900
+
+  SELL 22,700 CE at ₹28  (at call OI wall)
+  BUY  22,800 CE at ₹15  (100pt wing protection)
+  SELL 21,900 PE at ₹30  (at put OI wall)
+  BUY  21,800 PE at ₹18  (100pt wing protection)
+
+  Total credit: (28-15) + (30-18) = ₹25 per lot
+  Max risk per side: 100 - 25 = ₹75 per lot
+  Breakeven: 21,875 to 22,725
+
+POSITION SIZE:
+  Capital: ₹50L, Risk: 1% × Confidence C (×0.6) × ATR ×0.8
+  Adjusted risk: ₹24,000
+  Loss per lot: ₹75 × 65 = ₹4,875
+  VIX cap: 50% → max from VIX = 5 lots
+  Lots: min(4, 5) = 4 lots
+  Max profit: ₹25 × 65 × 4 = ₹6,500
+  Max loss: ₹75 × 65 × 4 = ₹19,500
+
+ENTRY & MANAGEMENT:
+  Entry: Wednesday 10:00-11:00 AM (sell at peak IV)
+  Thursday post-RBI: IV will crush 25-35% regardless of outcome
+  Exit: Thursday by 11:00 AM if both sides profitable
+  Stop: if either short leg reaches 80% of wing width → exit that side
+
+  ┌──────────────────────────────────────────────────────┐
+  │ SELL 22,700 CE + BUY 22,800 CE                      │
+  │ SELL 21,900 PE + BUY 21,800 PE                      │
+  │ Weekly expiry (Tuesday)                              │
+  │ Lots: 4                                              │
+  │ Credit: ₹25/lot → total ₹6,500                      │
+  │ Max loss: ₹19,500 per side                           │
+  │ Entry: Wed 10:00-11:00 AM                            │
+  │ Edge: Post-RBI IV crush = your profit                │
+  │ Confidence: C                                        │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 6: Panic Regime — Capital Preservation",
+        tag: "SURVIVAL MODE",
+        tagColor: "#b91c1c",
+        content: "VIX > 25, global sell-off, FII dumping. The system enters SURVIVAL MODE. No normal trading — only hedging and protecting capital.",
+        example: `SCENARIO: Market in free fall. Nifty -3% today, -8% this week.
+
+SIGNALS:
+  FII cash flow:    -1.0  (selling ₹7,000cr/day, 5th day)
+  India VIX:        -1.0  (VIX at 28, panic)
+  Futures basis:    -1.0  (deep backwardation)
+  FII L/S ratio:    -0.8  (ratio at 0.4)
+  USD/INR:          -0.8  (INR breaking 85.5)
+  Crude:            -0.9  (crude at $98, crisis zone)
+  US 10Y:           -0.7  (spiking to 4.8%)
+  Credit spreads:   -0.7  (blowing out)
+  RSI:              +0.7  (deeply oversold — CONTRARIAN)
+  Z-score:          +0.8  (Z at -2.8 — CONTRARIAN)
+
+  Composite: -0.62 → STRONG_SHORT
+  BUT: RSI and Z-score screaming oversold...
+
+REGIME:
+  VIX: 28 → PANIC → 25% EXPOSURE CAP
+  This single number overrides everything.
+
+CRITICAL DECISION:
+  The composite says short. RSI says buy the dip.
+  In PANIC regime, the system says: NEITHER.
+
+  ┌──────────────────────────────────────────────────────┐
+  │ ACTION: CAPITAL PRESERVATION                         │
+  │                                                      │
+  │ If you have existing longs:                          │
+  │   CLOSE 50% immediately at market.                   │
+  │   Buy 21,000 PE (5% OTM, monthly) for remaining.    │
+  │   Cost: ~₹120/lot. This is INSURANCE.                │
+  │                                                      │
+  │ If you are flat:                                     │
+  │   BUY 21,000 PE (monthly, 5% OTM)                   │
+  │   Lots: 2 only (tiny size)                           │
+  │   Cost: ₹120 × 65 × 2 = ₹15,600 total              │
+  │                                                      │
+  │ DO NOT:                                              │
+  │   ✗ Sell any options naked                           │
+  │   ✗ Try to catch the bottom (oversold ≠ buy)         │
+  │   ✗ Take large directional bets either way           │
+  │   ✗ Average down on losing longs                     │
+  │                                                      │
+  │ WAIT FOR (before resuming normal trading):           │
+  │   • VIX drops below 22 for 2 consecutive days        │
+  │   • FII selling slows to < ₹2,000cr/day              │
+  │   • Futures basis turns positive                      │
+  │                                                      │
+  │ The market will be here next week.                   │
+  │ Your capital might not be if you fight this.         │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 7: Intraday VWAP Reversion — Afternoon Fade",
+        tag: "INTRADAY SCALP",
+        tagColor: "#0369a1",
+        content: "Morning trend overextended. VWAP deviation > 0.5%. RSI overbought on 15-min. GEX positive (mean-revert mode). Classic afternoon fade trade.",
+        example: `SCENARIO: Thursday 12:45 PM
+
+MORNING CONTEXT:
+  Nifty rallied from 22,500 open to 22,680 by noon.
+  Session VWAP: 22,570
+  Current deviation: +0.49% above VWAP
+  RSI 15-min: 78 (overbought)
+  GEX: POSITIVE → dealers suppress → MEAN_REVERT mode
+  ATR used: 80% (day high 22,690, day low 22,490 = 200pts vs 250pt ATR)
+
+  Daily composite is MILD_LONG (+0.25).
+  BUT intraday is OVEREXTENDED.
+
+  This is a SEPARATE intraday system overlaid on the daily.
+
+INTRADAY SIGNALS:
+  VWAP deviation: -0.6 score (0.49% above → expect reversion DOWN)
+  RSI 15-min: -0.6 (overbought)
+  ATR exhaustion: ×1.5 amplifier (80% range used)
+  Time factor: ×1.3 (1:00 PM = peak reversion window)
+  Cross count: 1 (price above VWAP all day = trend day → ×0.5 caution)
+
+  Net intraday score: -0.6 × 1.5 × 1.3 × 0.5 = -0.59 → FADE THE RALLY
+
+TRADE:
+  Buy 22,650 PE (1st OTM put)
+  Premium: ~₹30
+  Delta: -0.35
+
+  Entry: 12:45-13:00 PM
+  Target: Nifty reverts to VWAP (22,570) → PE goes to ~₹55
+  Stop: Nifty makes new high > 22,710 → PE drops to ~₹15
+  Lots: 3 (intraday, small size)
+
+  ┌──────────────────────────────────────────────────────┐
+  │ BUY 22,650 PE at ₹30                                │
+  │ Lots: 3 (intraday only)                              │
+  │ Target: ₹55 (Nifty at VWAP 22,570)                  │
+  │ Stop: ₹15 (Nifty > 22,710)                          │
+  │ Risk: ₹15 × 65 × 3 = ₹2,925                        │
+  │ Reward: ₹25 × 65 × 3 = ₹4,875                      │
+  │ R:R = 1:1.67                                         │
+  │ Exit by: 14:45 PM regardless (do NOT carry overnight)│
+  │                                                      │
+  │ This does NOT override daily bias (mild long).       │
+  │ This is an intraday mean-reversion scalp.            │
+  │ Daily system and intraday system are SEPARATE.       │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 8: Earnings Event — TCS Results",
+        tag: "EVENT DRIVEN",
+        tagColor: "#9333ea",
+        content: "IT earnings season starting. TCS reports after market close. No pre-position — WAIT for data, then react fast.",
+        example: `SCENARIO: Tuesday evening (expiry day). TCS reports after close.
+
+CURRENT STATE:
+  Nifty IT: weak (-3% in 2 weeks)
+  Composite: +0.08 (dead zone, no direction)
+  Straddle richness: +0.6 (IT options expensive pre-event)
+  Earnings signal #28: 0.0 (no results yet)
+
+DECISION: DO NOT pre-position before results.
+
+  ┌──────────────────────────────────────────────────────┐
+  │ TONIGHT: No new Nifty positions.                     │
+  │                                                      │
+  │ Set alert for 6 PM when TCS results hit.             │
+  │ Run composite immediately after.                     │
+  │                                                      │
+  │ IF TCS BEATS CONSENSUS (Wednesday pre-market):       │
+  │   Signal #28 jumps to +0.3                           │
+  │   Composite may shift to +0.20 to +0.25             │
+  │   → MILD LONG on Nifty                              │
+  │   → Bull Call Spread                                 │
+  │   → Enter Wednesday 09:45 AM                         │
+  │                                                      │
+  │ IF TCS MISSES (Wednesday pre-market):                │
+  │   Signal #28 drops to -0.3                           │
+  │   Composite shifts to -0.15 to -0.25                │
+  │   → MILD SHORT or NO TRADE                          │
+  │   → Wait for Infosys (Thursday) to confirm          │
+  │   → If both miss → STRONG SHORT on Nifty IT         │
+  │                                                      │
+  │ IF TCS IN-LINE (no surprise):                        │
+  │   Signal #28 stays near 0.0                          │
+  │   → NO TRADE. Wait for more data.                    │
+  │                                                      │
+  │ KEY PRINCIPLES:                                      │
+  │   • Don't predict results. React to them.            │
+  │   • The edge is SPEED of processing, not prediction. │
+  │   • First 15 min after results → set your bias.      │
+  │   • First 30 min of next session → execute.          │
+  │   • IV crush post-results = sell overpriced options.  │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 9: Advance Tax Date — March 13-15",
+        tag: "CALENDAR TRADE",
+        tagColor: "#65a30d",
+        content: "2 days before March 15 advance tax date. Predictable selling pressure from corporates. A simple, mechanical, repeatable trade.",
+        example: `SCENARIO: Friday March 13. Tax date March 15 (Monday).
+
+CONTEXT:
+  T-2 from advance tax date (peak selling window).
+  Nifty: 22,100. VIX: 14.5 (normal).
+  FII already mildly selling (amplifies tax pressure).
+  Historical: Nifty negative in T-3 to T-1 window 70% of years.
+  Average dip: 0.5-1.0%. Recovery starts T+1.
+
+SIGNALS:
+  #30 Tax date:      -0.4  (T-2, peak selling active)
+  #1  FII flow:      -0.3  (mild selling, amplifies)
+  Other signals: mostly neutral
+  Composite pre-tax: -0.18
+  After tax override: 0.95 × (-0.18) + 0.05 × (-0.4) = -0.19
+
+LAYER 3: MILD_SHORT + normal VIX → BEAR_PUT_SPREAD
+
+  ┌──────────────────────────────────────────────────────┐
+  │ TRADE 1 — SHORT-TERM (Friday):                       │
+  │                                                      │
+  │ BUY  22,100 PE                                       │
+  │ SELL 21,900 PE                                       │
+  │ Weekly expiry (next Tuesday)                         │
+  │ Lots: 3 (small — calendar signal only)               │
+  │ Entry: Friday 10:00-11:00 AM                         │
+  │ Exit: Monday by 11:00 AM (tax selling done by then)  │
+  │ Expected: 0.5-0.7% dip over T-2 to T-1              │
+  │                                                      │
+  │ TRADE 2 — POST-TAX BOUNCE (Monday):                  │
+  │                                                      │
+  │ After 11:00 AM Monday, if Nifty dipped:              │
+  │ BUY current ATM Call                                 │
+  │ Lots: 3                                              │
+  │ Target: 0.5-0.7% bounce over next 3 days             │
+  │ Historical win rate: 65%                             │
+  │                                                      │
+  │ Confidence: C (calendar effect, small but reliable)  │
+  │                                                      │
+  │ OVERRIDE: If FII selling > ₹3,000cr alongside tax    │
+  │ pressure → skip the bounce trade. Macro > calendar.  │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 10: Loss Limit Blocked",
+        tag: "CIRCUIT BREAKER",
+        tagColor: "#dc2626",
+        content: "Already lost 2.3% today. System BLOCKS all new trades. This is the most important risk rule — it overrides everything, including strong signals.",
+        example: `SCENARIO: Thursday 1:15 PM
+
+WHAT HAPPENED:
+  You entered a bull call spread at 10 AM.
+  Nifty dropped sharply on unexpected news.
+  Your P&L today: -₹1,15,000 on ₹50L capital = -2.3%
+  Daily loss limit: 2% (₹1,00,000)
+  
+  Your signals NOW show STRONG_SHORT (composite -0.55).
+  You want to short to "recover" the losses.
+
+  THE SYSTEM SAYS: NO.
+
+  ┌──────────────────────────────────────────────────────┐
+  │ ACTION: BLOCKED                                      │
+  │ Reason: Daily loss limit exceeded.                   │
+  │ P&L today: -₹1,15,000 (-2.3%)                       │
+  │ Limit: -2.0% (₹1,00,000)                            │
+  │                                                      │
+  │ REQUIRED ACTIONS:                                    │
+  │   1. Reduce ALL open positions by 50% NOW.           │
+  │   2. No new trades until tomorrow.                   │
+  │   3. Tighten stops on remaining positions.           │
+  │                                                      │
+  │ If P&L reaches -3% (-₹1,50,000):                    │
+  │   CLOSE EVERYTHING. Day is done. Go for a walk.      │
+  │                                                      │
+  │ WHY THIS MATTERS:                                    │
+  │   The composite says short. It might be right.       │
+  │   But "revenge trading" after a loss is how           │
+  │   accounts blow up. You are NOT thinking clearly     │
+  │   after a 2%+ loss day. Every study shows this.      │
+  │                                                      │
+  │   The market will be here tomorrow.                  │
+  │   Your capital might not be if you chase.            │
+  │                                                      │
+  │ POST-MORTEM (tonight):                               │
+  │   • Did you override a stop loss?                    │
+  │   • Did you enter too early (before confirmation)?   │
+  │   • Was position size correct for the confidence?    │
+  │   • Log the violation. Fix the PROCESS, not the P&L. │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 11: Long Straddle — Pre-Budget",
+        tag: "EVENT VOLATILITY",
+        tagColor: "#4338ca",
+        content: "Union Budget tomorrow. Options are CHEAP (unusual). Buy movement, not direction. Profit from the event move regardless of which way.",
+        example: `SCENARIO: January 31, afternoon. Budget is Feb 1.
+
+CONTEXT:
+  VIX at 17 and rising (but not extreme).
+  IV-RV spread: -0.2 (options CHEAP relative to expected move).
+  This is unusual — normally pre-budget options are expensive.
+  Market hasn't fully priced the event.
+  Directional composite: +0.08 (dead zone, no direction).
+
+SIGNALS:
+  #23 IV-RV:            -0.4 (options cheap → BUY_OPTIONS bias)
+  #29 Straddle richness: -0.5 (straddle underpriced)
+  Direction: NEUTRAL (composite in dead zone)
+
+LAYER 3: NEUTRAL + BUY_OPTIONS bias → LONG STRADDLE
+
+STRIKE SELECTION:
+  Nifty: 22,500
+  Use MONTHLY expiry (not weekly — need time post-budget)
+  ATM: 22,500
+  Buy 22,500 CE at ₹190 (monthly)
+  Buy 22,500 PE at ₹170 (monthly)
+  Straddle cost: ₹360 per lot
+  Breakeven: below 22,140 or above 22,860 (±360 pts)
+
+POSITION SIZE:
+  This is an EVENT trade. Size conservatively.
+  Capital: ₹50L, Risk: 1%, Confidence: C (×0.6), ATR: ×1.0
+  Adjusted risk: ₹30,000
+  Stop: straddle drops to ₹216 (40% loss)
+  Loss per lot: ₹144 × 65 = ₹9,360
+  Lots: 30,000 / 9,360 = 3 lots
+  Total cost: ₹360 × 65 × 3 = ₹70,200
+
+  ┌──────────────────────────────────────────────────────┐
+  │ BUY 22,500 CE (monthly) at ₹190                     │
+  │ BUY 22,500 PE (monthly) at ₹170                     │
+  │ Lots: 3                                              │
+  │ Total cost: ₹70,200                                  │
+  │ Breakeven: 22,140 / 22,860 (±1.6%)                  │
+  │ Entry: Jan 31, 14:00-15:00 (before Feb 1 IV pump)   │
+  │                                                      │
+  │ POST-BUDGET MANAGEMENT (Feb 1):                      │
+  │                                                      │
+  │   If Nifty moves > 360pts in either direction:       │
+  │     → Exit the LOSING leg immediately.               │
+  │     → Trail stop on winning leg (50% of gains).      │
+  │     → Expected profit: ₹30,000-60,000                │
+  │                                                      │
+  │   If Nifty moves 200-360pts:                         │
+  │     → Hold. Move may continue next day.              │
+  │     → Set stop at entry cost on the straddle.        │
+  │                                                      │
+  │   If Nifty moves < 200pts (muted reaction):          │
+  │     → EXIT BOTH LEGS by 11 AM Feb 1.                 │
+  │     → IV crush will destroy the straddle value.      │
+  │     → Accept ₹15,000-25,000 loss. Move on.           │
+  │                                                      │
+  │ KEY: You're buying MOVEMENT, not direction.           │
+  │ Budget creates movement 60% of years > straddle.     │
+  │ The other 40% you lose. Size accordingly (small).    │
+  └──────────────────────────────────────────────────────┘`,
+      },
+      {
+        title: "Example 12: Mild Long — Wednesday Fresh Series",
+        tag: "LOW CONVICTION",
+        tagColor: "#2563eb",
+        content: "New weekly series. Mild bullish lean but low conviction. System sizes TINY — showing that confidence grade controls risk as much as direction.",
+        example: `SCENARIO: Wednesday morning. Fresh weekly series (Tuesday expiry passed).
+
+CONTEXT:
+  OI is light (new series, positions not built yet).
+  FII bought ₹800cr yesterday (mild positive).
+  VIX at 11.5 (very low, complacent zone).
+  Nifty at 22,600. US flat overnight.
+  No strong signals, but mild bullish lean.
+
+SIGNALS:
+  #1  FII flow:      +0.3  (mild buying)
+  #2  India VIX:     +0.5  (very low VIX, bullish for selling)
+  #4  Futures basis:  +0.3  (positive)
+  #6  PCR:           +0.1  (slightly put-heavy)
+  #7  FII L/S ratio: +0.3  (ratio 2.2, mildly bullish)
+  #10 OI+Price:      +0.2  (mild long buildup)
+  Others: near 0.0
+
+  Composite: +0.22 → MILD_LONG (barely above dead zone)
+
+REGIME:
+  VIX: 11.5 → COMPLACENT → 100% exposure
+  IV-RV: +0.7 (options very rich → SELL bias)
+  ATR mult: 1.4 (low vol, can size up)
+
+LAYER 3: MILD_LONG + low VIX → BULL_CALL_SPREAD
+         Confidence: D (composite only 0.22)
+
+  ┌──────────────────────────────────────────────────────┐
+  │ BUY  22,600 CE at ₹135                              │
+  │ SELL 22,750 CE at ₹70                               │
+  │ Weekly expiry (next Tuesday)                         │
+  │ Lots: 4 (SMALL — confidence D)                       │
+  │ Net debit: ₹65/lot → total ₹16,900                  │
+  │ Max profit: ₹85/lot → total ₹22,100                 │
+  │ Entry: 09:45-10:30 (after open settles)              │
+  │ Stop: exit if spread drops to ₹25                    │
+  │ Confidence: D                                        │
+  │                                                      │
+  │ WHY SO SMALL:                                        │
+  │   Confidence D → ×0.3 risk multiplier                │
+  │   ₹50,000 × 0.3 × 1.4 = ₹21,000 max risk           │
+  │   This is BY DESIGN. Weak signals get weak sizing.   │
+  │   If you're right → small win (₹22K).                │
+  │   If you're wrong → small loss (₹17K).               │
+  │   Neither matters much. That's the point.            │
+  │                                                      │
+  │ CONSIDER: Skipping this trade entirely is also valid. │
+  │   D-confidence trades have ~52% win rate.            │
+  │   Edge exists but is thin. Transaction costs eat it. │
+  │   Many pros skip anything below C confidence.        │
+  └──────────────────────────────────────────────────────┘`,
+      },
     ],
   },
 ];
+
+const recoData = [{"title":"EXAMPLE 1: STRONG BULLISH — Thursday Morning Gap Up","scenario":"FII heavily buying, US rallied, gap up opening","body":`CONTEXT:
+  FII bought ₹3,200cr yesterday. US S&P +1.2% overnight.
+  GIFT Nifty showing +0.65% gap. India VIX at 13.2.
+  FII L/S ratio: 2.8 (bullish). Futures basis: +0.25%.
+  GEX positive. Nifty prev close: 22,400.
+
+SIGNALS:
+  #1  FII cash flow:      +0.7    (strong buying 3 consecutive days)
+  #2  India VIX:          +0.3    (low VIX, 25th percentile)
+  #3  OI distribution:    +0.4    (price near put wall support)
+  #4  Futures basis:      +0.5    (positive contango)
+  #5  GIFT Nifty gap:     +0.6    (medium-large gap up)
+  #6  PCR:                +0.3    (PCR 1.15, mildly bullish)
+  #7  FII L/S ratio:      +0.5    (ratio at 2.8, bullish)
+  #8  Max pain:           +0.1    (4 days to expiry, weak pull)
+  #9  US overnight:       +0.7    (S&P +1.2%, strong)
+  #10 OI+Price:           +0.5    (long buildup 2nd day)
+  #12 RSI:                +0.1    (neutral, not overbought)
+  #14 DII flow:           +0.1    (mild DII buying)
+  #15 USD/INR:             0.0    (stable at 83.20)
+  #16 Crude:              +0.1    (crude at $82, comfortable)
+  #17 Z-score:            -0.1    (slightly above mean, no signal)
+  #19 OI unwinding:       +0.4    (fresh call buying at strikes)
+  #20 US 10Y:             -0.1    (4.2%, neutral zone)
+  #21 NLP sentiment:      +0.3    (positive news flow)
+  #24 Sector rotation:    +0.3    (Bank Nifty leading)
+  #25 Credit spreads:     +0.1    (tight, risk-on)
+
+RAW VALUES:
+  VIX: 13.2 → NORMAL regime → 100% exposure
+  GEX: POSITIVE → MEAN_REVERT mode
+  IV-RV: +0.5 → SELL_OPTIONS bias (options rich)
+  ATR mult: 1.1 → slightly larger positions OK
+
+LAYER 1 OUTPUT:
+  Composite = +0.42 → MILD_LONG
+
+LAYER 2 OUTPUT:
+  Regime: NORMAL, Exposure: 100%, Mode: MEAN_REVERT, Bias: SELL_OPTIONS
+
+LAYER 3 OUTPUT:
+  Direction: MILD_LONG + NORMAL VIX → BULL_CALL_SPREAD
+  Confidence: C (score 0.42, moderate)
+
+LAYER 4 OUTPUT:
+  Nifty spot: 22,540 (opened gap up)
+  ATM: 22,550
+  Max call OI: 22,800 (resistance)
+  Buy 22,550 CE at ₹155
+  Sell 22,800 CE at ₹60
+  Net debit: ₹95 per lot
+  Max profit: 250 - 95 = ₹155 per lot at expiry above 22,800
+
+LAYER 5 OUTPUT:
+  Capital: ₹50L, Risk: 1%, Confidence: C → ×0.6, ATR: ×1.1
+  Adjusted risk: ₹50,000 × 0.6 × 1.1 = ₹33,000
+  Loss per lot: ₹95 × 65 = ₹6,175
+  Lots: 33,000 / 6,175 = 5 lots
+  Max profit: ₹155 × 65 × 5 = ₹50,375
+  Max loss: ₹95 × 65 × 5 = ₹30,875
+
+LAYER 6 OUTPUT:
+  Mode: MEAN_REVERT → afternoon entry
+  Window: 12:30-14:00 PM
+  Condition: wait for VWAP reversion setup in afternoon
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY  22,550 CE                          │
+  │ SELL 22,800 CE                          │
+  │ Weekly expiry (Tuesday)                 │
+  │ Lots: 5                                 │
+  │ Net debit: ₹95/lot → total ₹30,875     │
+  │ Max profit: ₹155/lot → total ₹50,375   │
+  │ Entry: 12:30-14:00 PM                   │
+  │ Stop: exit if spread value < ₹40        │
+  │ Confidence: C                           │
+  │ Warnings: None                          │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 2: STRONG BEARISH — FII Dumping + Crude Spike","scenario":"Multi-day FII selling, crude spiking, INR weak","body":`CONTEXT:
+  FII sold ₹4,500cr yesterday (5th consecutive day of selling).
+  Crude at $94 (+6% this week). USD/INR broke above 84.5.
+  US 10Y spiked 25bps this week. India VIX jumped to 19.
+  Credit spreads widening. Nifty at 21,800.
+
+SIGNALS:
+  #1  FII cash flow:      -0.9    (extreme selling, 5-day streak)
+  #2  India VIX:          -0.5    (VIX 19, elevated, 75th percentile)
+  #3  OI distribution:    -0.3    (price approaching call OI wall from below)
+  #4  Futures basis:      -0.7    (basis turned negative, backwardation)
+  #5  GIFT Nifty gap:     -0.5    (GIFT showing -0.4% gap)
+  #6  PCR:                -0.3    (PCR 0.75, call buyers dominating)
+  #7  FII L/S ratio:      -0.7    (ratio dropped to 0.6, very bearish)
+  #9  US overnight:       -0.4    (S&P -0.7%)
+  #10 OI+Price:           -0.5    (short buildup 3rd day)
+  #12 RSI:                -0.2    (approaching oversold but not there yet)
+  #15 USD/INR:            -0.7    (sharp depreciation, >0.5% in a day)
+  #16 Crude:              -0.8    (crude at $94, alarm zone, rising fast)
+  #17 Z-score:            +0.4    (Z at -1.5, approaching oversold)
+  #20 US 10Y:             -0.6    (rapid spike, +25bps in week)
+  #21 NLP sentiment:      -0.5    (strongly negative headlines)
+  #24 Sector rotation:    -0.3    (IT and Pharma leading = defensive)
+  #25 Credit spreads:     -0.4    (widening 15bps this week)
+  #26 Delivery %:         -0.4    (high delivery on down days = genuine selling)
+
+RAW VALUES:
+  VIX: 19 → ELEVATED → 75% exposure cap
+  GEX: NEGATIVE → MOMENTUM mode (vol expanding)
+  IV-RV: +0.3 → mild SELL bias but VIX elevated
+  ATR mult: 0.7 → high vol, size down
+
+LAYER 1 OUTPUT:
+  Composite = -0.58 → STRONG_SHORT
+
+LAYER 3 OUTPUT:
+  Direction: STRONG_SHORT + ELEVATED VIX → BEAR_PUT_SPREAD (defined risk)
+  Confidence: B (score -0.58)
+
+LAYER 4 OUTPUT:
+  Nifty spot: 21,750
+  ATM: 21,750
+  Max put OI: 21,500 (support)
+  Buy 21,750 PE at ₹220
+  Sell 21,500 PE at ₹120
+  Net debit: ₹100 per lot
+  Max profit: 250 - 100 = ₹150 at expiry below 21,500
+
+LAYER 5 OUTPUT:
+  Capital: ₹50L, Risk: 1%, Confidence: B → ×0.8, ATR: ×0.7
+  Adjusted risk: ₹50,000 × 0.8 × 0.7 = ₹28,000
+  Loss per lot: ₹100 × 65 = ₹6,500
+  VIX cap: 75% → max lots from VIX = 0.75 × 50,000 / 6,500 = 5.7 → 5
+  Lots: min(4, 5) = 4 lots
+  Max loss: ₹100 × 65 × 4 = ₹26,000
+  Max profit: ₹150 × 65 × 4 = ₹39,000
+
+LAYER 6 OUTPUT:
+  Mode: MOMENTUM → morning entry
+  Window: 09:32-09:45
+  Condition: wait for opening range breakdown. 5-min close below OR low.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY  21,750 PE                          │
+  │ SELL 21,500 PE                          │
+  │ Weekly expiry (Tuesday)                 │
+  │ Lots: 4                                 │
+  │ Net debit: ₹100/lot → total ₹26,000    │
+  │ Max profit: ₹150/lot → total ₹39,000   │
+  │ Entry: 09:32-09:45 (OR breakdown)       │
+  │ Nifty stop: 21,810 (above call OI wall) │
+  │ Confidence: B                           │
+  │ Warnings: VIX elevated → exposure capped│
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 3: NEUTRAL — Monday Pin Trade Before Tuesday Expiry","scenario":"High pin risk, max pain and max OI at same level","body":`CONTEXT:
+  Monday 2 PM. Tuesday weekly expiry tomorrow.
+  Nifty at 22,480. Max pain: 22,500. Max OI: 22,500 (both call and put).
+  GEX strongly positive. India VIX: 12.5. No major events.
+  Most signals are neutral (no strong directional bias).
+
+SIGNALS:
+  Most directional signals: near 0.0 (no conviction either way)
+  #1  FII cash flow:       0.0    (mixed, no trend)
+  #2  India VIX:          +0.4    (low VIX, complacent)
+  #4  Futures basis:      +0.1    (flat)
+  #6  PCR:                 0.0    (PCR 1.0, perfectly neutral)
+  #8  Max pain:            0.0    (price AT max pain, no directional pull)
+  #22 Pin risk score:      85     (VERY HIGH — all conditions met)
+  #22 Pin risk direction:  0.0    (at pin target, no direction)
+  #23 IV-RV:              +0.6    (options rich, sell bias)
+  #29 Straddle richness:  +0.5    (straddle overpriced)
+
+RAW VALUES:
+  VIX: 12.5 → COMPLACENT → 100% exposure
+  GEX: POSITIVE → MEAN_REVERT (dealers suppress)
+  IV-RV: +0.6 → SELL_OPTIONS
+  ATR mult: 1.3 → low vol, can size up
+
+LAYER 1 OUTPUT:
+  Composite = +0.05 → NEUTRAL (in dead zone)
+  BUT: pin_risk > 75 → override activates
+
+LAYER 3 OUTPUT:
+  Direction: NEUTRAL + SELL bias + low VIX → SHORT_STRADDLE
+  Confidence: B (high pin risk overrides low composite)
+
+LAYER 4 OUTPUT:
+  Nifty spot: 22,480
+  ATM: 22,500
+  Sell 22,500 CE at ₹50
+  Sell 22,500 PE at ₹55
+  Total credit: ₹105 per lot
+  Breakeven: 22,395 to 22,605
+
+LAYER 5 OUTPUT:
+  Capital: ₹50L, Risk: 1%, Confidence: B → ×0.8, ATR: ×1.3
+  Adjusted risk: ₹50,000 × 0.8 × 1.3 = ₹52,000
+  Stop: straddle value increases to ₹158 (150% of entry)
+  Loss per lot: (158-105) × 65 = ₹3,445
+  Lots: 52,000 / 3,445 = 15 lots → cap at 12 (straddle risk)
+  Max profit if pinned: ₹105 × 65 × 12 = ₹81,900
+  Max loss at stop: ₹53 × 65 × 12 = ₹41,340
+
+LAYER 6 OUTPUT:
+  Pin trade → Monday afternoon entry
+  Window: 14:00-15:00
+  Condition: Price within 50 pts of 22,500. GEX still positive.
+
+MANAGEMENT:
+  Tuesday 09:15: monitor Nifty opening. If within 22,400-22,600 → hold.
+  Tuesday 11:00: straddle should be ₹60-70 (theta decay).
+  Tuesday 13:00: straddle should be ₹25-35.
+  Tuesday 14:00: EXIT. Do NOT hold past 14:00 (gamma explosion risk).
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ SELL 22,500 CE                          │
+  │ SELL 22,500 PE                          │
+  │ Weekly expiry (Tuesday — tomorrow)      │
+  │ Lots: 12                                │
+  │ Credit: ₹105/lot → total ₹81,900       │
+  │ Entry: Monday 14:00-15:00               │
+  │ Stop: straddle value > ₹158             │
+  │ Exit: Tuesday by 14:00 MANDATORY        │
+  │ Confidence: B (high pin risk)           │
+  │ Warnings: Close by 2 PM Tuesday.        │
+  │           Never hold naked shorts past  │
+  │           2:30 PM on expiry day.        │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 4: MILD LONG — Wednesday Fresh Series","scenario":"New weekly series, FII mildly positive, low VIX","body":`CONTEXT:
+  Wednesday morning. Fresh weekly series started (prev expired Tuesday).
+  OI is light (new series). FII bought ₹800cr yesterday.
+  VIX at 11.5 (very low). Nifty at 22,600. US flat overnight.
+  No strong signals, but mild bullish lean.
+
+SIGNALS:
+  #1  FII cash flow:      +0.3    (mild buying)
+  #2  India VIX:          +0.5    (very low VIX, complacent)
+  #3  OI distribution:    +0.1    (light OI, no strong walls yet)
+  #4  Futures basis:      +0.3    (positive basis)
+  #6  PCR:                +0.1    (slightly put-heavy, mildly bullish)
+  #7  FII L/S ratio:      +0.3    (ratio at 2.2)
+  #9  US overnight:        0.0    (flat)
+  #10 OI+Price:           +0.2    (mild long buildup)
+  #23 IV-RV:              +0.7    (options very rich at low VIX → sell)
+  Other signals: near 0.0
+
+LAYER 1: Composite = +0.22 → MILD_LONG
+LAYER 2: COMPLACENT, 100% exposure, MEAN_REVERT, SELL_OPTIONS, ATR mult 1.4
+LAYER 3: MILD_LONG + low VIX → BULL_CALL_SPREAD
+         Confidence: D (score only 0.22)
+
+LAYER 4:
+  Buy 22,600 CE at ₹135 (ATM)
+  Sell 22,750 CE at ₹70 (1st resistance area)
+  Net debit: ₹65, Max profit: ₹85
+
+LAYER 5:
+  Confidence D → ×0.3 (very small size)
+  Risk: ₹50,000 × 0.3 × 1.4 = ₹21,000
+  Loss per lot: ₹65 × 65 = ₹4,225
+  Lots: 21,000 / 4,225 = 4 lots (small, appropriate for low conviction)
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY  22,600 CE                          │
+  │ SELL 22,750 CE                          │
+  │ Weekly expiry (next Tuesday)            │
+  │ Lots: 4 (small — low conviction)        │
+  │ Net debit: ₹65/lot → total ₹16,900     │
+  │ Max profit: ₹85/lot → total ₹22,100    │
+  │ Entry: 09:45-10:30 (after open settles) │
+  │ Confidence: D                           │
+  │ Warnings: Low conviction. Small size.   │
+  │           Consider skipping this trade. │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 5: NO TRADE — Dead Zone","scenario":"Mixed signals, nothing clear","body":`CONTEXT:
+  Thursday. FII bought ₹200cr (insignificant). US flat.
+  VIX at 15 (normal). Mixed sector rotation.
+  Some signals bullish, some bearish, nothing strong.
+
+SIGNALS:
+  #1  FII:     +0.1  |  #7  FII L/S:  +0.2  |  #4  Basis:    +0.1
+  #9  US:       0.0  |  #6  PCR:       0.0  |  #15 USD/INR:   0.0
+  #16 Crude:   -0.1  |  #20 US 10Y:   -0.1  |  #21 NLP:      +0.1
+  #12 RSI:      0.0  |  #17 Z-score:   0.0  |  #24 Rotation:  0.0
+
+LAYER 1: Composite = +0.07 → DEAD ZONE
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ ACTION: NO TRADE                        │
+  │ Reason: Composite +0.07 in dead zone    │
+  │         [-0.15 to +0.15]                │
+  │ Advice: Wait for clarity. The best      │
+  │         trade is often no trade.        │
+  │         Re-evaluate at next session     │
+  │         or when FII data arrives        │
+  │         tonight at 8:30 PM.             │
+  └─────────────────────────────────────────┘
+
+  This is the CORRECT outcome. A system that recommends
+  a trade every day is a bad system. Expect NO_TRADE on
+  40-50% of days. That's how you preserve capital.
+`},{"title":"EXAMPLE 6: IRON CONDOR — High VIX Neutral","scenario":"VIX elevated, neutral score, options expensive","body":`CONTEXT:
+  Pre-RBI MPC announcement. VIX jumped to 21 (fear zone).
+  FII flat. No strong directional signal.
+  Options are very expensive (IV-RV spread at 90th percentile).
+  Market expects a big move but signals don't confirm direction.
+
+SIGNALS:
+  Directional signals mostly near 0.0 (no consensus)
+  #2  India VIX:    -0.5    (fear zone, elevated)
+  #23 IV-RV:        +0.8    (options extremely rich)
+  #29 Straddle:     +0.7    (straddle overpriced)
+
+LAYER 1: Composite = -0.05 → NEUTRAL
+LAYER 2: VIX FEAR → 50% exposure. SELL_OPTIONS bias.
+LAYER 3: NEUTRAL + FEAR VIX + SELL bias → IRON_CONDOR (defined risk mandatory)
+
+LAYER 4:
+  Nifty: 22,300. Expected move: ±350 (straddle is rich).
+  Max call OI: 22,700. Max put OI: 21,900.
+  Sell 22,700 CE / Buy 22,800 CE (100pt call wing)
+  Sell 21,900 PE / Buy 21,800 PE (100pt put wing)
+  Total credit: ₹55 per lot
+
+LAYER 5:
+  VIX cap: 50% exposure → constrained sizing
+  Loss per lot: (100 - 55) × 65 = ₹2,925 per side
+  Risk: ₹50,000 × 0.50 × 0.6 × 0.8 = ₹12,000
+  Lots: 12,000 / 2,925 = 4 lots
+  Max profit: ₹55 × 65 × 4 = ₹14,300
+  Max loss per side: ₹45 × 65 × 4 = ₹11,700
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ SELL 22,700 CE + BUY 22,800 CE          │
+  │ SELL 21,900 PE + BUY 21,800 PE          │
+  │ Weekly expiry (Tuesday)                 │
+  │ Lots: 4                                 │
+  │ Credit: ₹55/lot → total ₹14,300        │
+  │ Max loss: ₹11,700 per side              │
+  │ Entry: 10:00-11:00 (sell at peak IV)    │
+  │ Exit: close if one side at 80% of width │
+  │ Confidence: C                           │
+  │ Warnings: RBI MPC tomorrow. VIX may     │
+  │   crush 30%+ post-event = your edge.    │
+  │   Position for IV crush, not direction. │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 7: PANIC REGIME — VIX > 25, Capital Preservation","scenario":"Global sell-off, VIX spiking, everything falling","body":`CONTEXT:
+  Market in free fall. Nifty down 3% today, down 8% this week.
+  VIX at 28 (panic). FII selling ₹7,000cr/day.
+  Crude at $98. USD/INR at 85.5 (breaking down).
+  US 10Y at 4.8%, credit spreads blowing out.
+
+SIGNALS:
+  #1  FII:          -1.0    (extreme selling)
+  #2  VIX:          -1.0    (panic)
+  #4  Basis:        -1.0    (deep backwardation)
+  #7  FII L/S:      -0.8    (ratio at 0.4)
+  #15 USD/INR:      -0.8    (sharp depreciation)
+  #16 Crude:        -0.9    (alarm zone, rising)
+  #20 US 10Y:       -0.7    (spiking)
+  #25 Credit:       -0.7    (widening fast)
+  #12 RSI:          +0.7    (deeply oversold — contrarian signal)
+  #17 Z-score:      +0.8    (Z at -2.8, deeply oversold)
+
+LAYER 1: Composite = -0.62 → STRONG_SHORT
+         BUT RSI and Z-score are screaming oversold...
+
+LAYER 2: VIX PANIC → 25% exposure cap only!
+
+LAYER 3:
+  STRONG_SHORT + PANIC VIX → BEAR_PUT_SPREAD (defined risk only)
+  Confidence: B
+  BUT: system also triggers HEDGE recommendation
+
+LAYER 5:
+  Exposure cap: 25% → very small position
+  ATR mult: 0.5 (extremely high vol)
+  Lots: 2 maximum
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ PRIMARY: HEDGE / PROTECT CAPITAL        │
+  │                                         │
+  │ If you have existing longs:             │
+  │   CLOSE 50% immediately at market.      │
+  │   Buy 21,000 PE (5% OTM) for remaining.│
+  │                                         │
+  │ If flat:                                │
+  │   BUY 21,000 PE (monthly, 5% OTM)      │
+  │   Lots: 2 only                          │
+  │   Cost: ~₹120/lot → ₹15,600 total      │
+  │   This is INSURANCE, not a trade.       │
+  │                                         │
+  │ DO NOT:                                 │
+  │   - Sell any options naked              │
+  │   - Take large directional bets         │
+  │   - Try to catch the bottom             │
+  │                                         │
+  │ WAIT FOR:                               │
+  │   VIX to drop below 22 sustained (2d)   │
+  │   FII selling to slow to <₹2000cr/day   │
+  │   Before resuming normal trading.       │
+  │                                         │
+  │ Confidence: B but DEFENSIVE ONLY        │
+  │ Warnings: PANIC regime. Survival mode.  │
+  │   Circuit breaker: 25% max exposure.    │
+  │   RSI oversold = DO NOT bottom-fish.    │
+  │   Oversold can stay oversold for weeks. │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 8: INTRADAY VWAP REVERSION — Afternoon Trade","scenario":"Morning trend overextended, VWAP reversion setup","body":`CONTEXT:
+  Thursday 12:45 PM. Nifty rallied in morning to 22,680 from 22,500 open.
+  Now 0.5% above VWAP (22,570). RSI 15-min at 78 (overbought).
+  GEX positive (mean-revert mode). ATR 80% used already.
+  Daily composite is MILD_LONG but intraday is overextended.
+
+INTRADAY SIGNALS (not in daily composite — separate system):
+  #13 VWAP deviation:     -0.6    (0.5% above, expect reversion DOWN)
+  #18 ORB:                +0.5    (morning breakout was valid)
+  #12 RSI 15-min:         -0.6    (overbought on 15-min)
+  #11 GEX:                POSITIVE → MEAN_REVERT mode
+  ATR used: 80% → ×1.5 reversion multiplier
+
+INTRADAY RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ INTRADAY: BUY 22,550 PE (near-ATM put)  │
+  │ This is a FADE of the morning rally.    │
+  │                                         │
+  │ Entry: 12:45-13:00 PM                   │
+  │ Target: Nifty reverts to VWAP (22,570)  │
+  │   → PE from ₹30 to ₹55 (target)        │
+  │ Stop: Nifty makes new day high > 22,700 │
+  │   → PE drops to ₹15 (stop)             │
+  │ Lots: 3 (intraday, small size)          │
+  │ Risk/Reward: ₹15 risk / ₹25 reward=1.7 │
+  │ Exit by: 14:45 PM regardless            │
+  │                                         │
+  │ DO NOT carry overnight — intraday only. │
+  │ This does NOT override daily bias.      │
+  │ Daily system says mild long — this is   │
+  │ just an intraday mean-reversion scalp.  │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 9: EARNINGS EVENT — TCS Results Week","scenario":"IT earnings season starting, TCS reporting tomorrow","body":`CONTEXT:
+  Tuesday evening (expiry day). TCS reports after market close.
+  Infosys reports Thursday. IT earnings season starting.
+  Nifty IT index has been weak (-3% in 2 weeks).
+  VIX at 15 (normal). FII neutral. No strong macro signals.
+
+SIGNALS:
+  #28 Earnings season:    0.0     (no results yet — score is 0)
+  #29 Straddle richness:  +0.6   (IT stocks straddles expensive pre-event)
+  Other signals: mostly neutral, composite = +0.08 (dead zone)
+
+PRE-EVENT STRATEGY:
+  Composite is in dead zone → NO directional trade on Nifty.
+
+  BUT: earnings season signal will ACTIVATE after TCS reports.
+  Position for the EVENT, not the direction.
+
+RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ TONIGHT: No new Nifty positions.        │
+  │                                         │
+  │ IF TCS BEATS (tomorrow pre-market):     │
+  │   #28 score will jump to +0.3           │
+  │   Composite may shift to +0.20-0.25    │
+  │   → MILD LONG on Nifty (IT 14% weight) │
+  │   → Bull Call Spread on Nifty           │
+  │   Entry: Wednesday 09:45 AM             │
+  │                                         │
+  │ IF TCS MISSES (tomorrow pre-market):    │
+  │   #28 score will drop to -0.3           │
+  │   Composite may shift to -0.15 to -0.25│
+  │   → MILD SHORT or NO TRADE             │
+  │   → Wait for Infosys Thursday to confirm│
+  │                                         │
+  │ KEY: Don't pre-position before results. │
+  │ Let the data come in. React, don't      │
+  │ predict. The edge is in PROCESSING the  │
+  │ result faster than the market.          │
+  │                                         │
+  │ Set an alert for 6 PM IST when TCS      │
+  │ results hit. Run composite immediately. │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 10: ADVANCE TAX DATE — March 13 (Friday)","scenario":"2 days before March 15 advance tax date","body":`CONTEXT:
+  Friday March 13. Advance tax date (March 15) is Monday.
+  T-2 window: peak selling pressure expected today and Monday morning.
+  FII already selling (unrelated to tax, but amplifies).
+  Nifty at 22,100. VIX normal at 14.5.
+
+SIGNALS:
+  #30 Tax date:           -0.4    (T-2, peak selling window active)
+  #1  FII cash flow:      -0.4    (selling, amplifies tax pressure)
+  #2  India VIX:          +0.2    (normal, no alarm)
+  Other signals: mildly negative, composite pre-tax = -0.18
+
+  After tax override: composite = 0.95 × (-0.18) + 0.05 × (-0.4) = -0.19
+
+LAYER 1: Composite = -0.19 → MILD_SHORT (just outside dead zone)
+LAYER 3: MILD_SHORT + normal VIX → BEAR_PUT_SPREAD
+
+RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ TRADE 1 (Friday): SHORT-TERM            │
+  │ BUY  22,100 PE                          │
+  │ SELL 21,900 PE                          │
+  │ Weekly expiry (next Tuesday)            │
+  │ Lots: 3 (small — calendar signal only)  │
+  │ Entry: 10:00-11:00 AM Friday            │
+  │ Exit: Monday by 11:00 AM (tax selling   │
+  │       should be done by then)           │
+  │                                         │
+  │ TRADE 2 (Monday): POST-TAX BOUNCE       │
+  │ After 11:00 AM Monday, if Nifty dipped: │
+  │ BUY  22,000 CE (or current ATM)         │
+  │ Lots: 3                                 │
+  │ Target: 0.5-0.7% bounce over 3 days     │
+  │ This is the RECOVERY trade.             │
+  │                                         │
+  │ Historical: Buying on tax date and       │
+  │ holding 5 days profitable 65% of time.  │
+  │                                         │
+  │ Confidence: C (calendar signal, small)  │
+  │ Warnings: Tax effect is real but small.  │
+  │   Average dip: 0.5-1.0%. Don't oversize.│
+  │   If FII selling heavily too, skip the  │
+  │   bounce trade — macro overrides tax.   │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 11: BLOCKED — Daily Loss Limit Hit","scenario":"Already lost 2.3% today, system blocks new trades","body":`CONTEXT:
+  Thursday 1:15 PM. You entered a bull call spread at 10 AM.
+  Nifty dropped sharply. Your P&L today: -₹1,15,000 on ₹50L capital.
+  That's -2.3%, which exceeds the 2% daily loss limit.
+  Your signals are now showing STRONG_SHORT (composite -0.55).
+  You want to short to recover losses.
+
+  The system says NO.
+
+RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ ACTION: BLOCKED                         │
+  │ Reason: Daily loss limit exceeded.      │
+  │         P&L today: -₹1,15,000 (-2.3%)  │
+  │         Limit: -2.0% (₹1,00,000)       │
+  │                                         │
+  │ REQUIRED ACTIONS:                       │
+  │   1. Reduce ALL open positions by 50%.  │
+  │   2. No new trades until tomorrow.      │
+  │   3. Tighten stops on remaining.        │
+  │                                         │
+  │ If P&L reaches -3% (-₹1,50,000):       │
+  │   CLOSE EVERYTHING. Day is done.        │
+  │                                         │
+  │ The composite says short. It might be   │
+  │ right. But chasing losses is how        │
+  │ accounts blow up. The market will be    │
+  │ here tomorrow.                          │
+  │                                         │
+  │ Log this day. Review what went wrong.   │
+  │ Did you override a stop? Did you enter  │
+  │ too early? Fix the process, not the P&L.│
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 12: LONG STRADDLE — Pre-Budget","scenario":"Union Budget tomorrow, VIX rising, options cheap","body":`CONTEXT:
+  January 31, afternoon. Union Budget is tomorrow Feb 1.
+  VIX at 17 and rising. IV-RV spread is surprisingly low (-0.2).
+  Options are cheap relative to expected move (market hasn't priced
+  the event fully). FII slightly positive. Composite near neutral.
+
+SIGNALS:
+  Directional composite: +0.08 (dead zone, no direction)
+  #23 IV-RV:         -0.4    (options cheap → BUY_OPTIONS bias)
+  #29 Straddle:      -0.5    (straddle underpriced for the event)
+  #2  India VIX:     -0.3    (rising but not extreme)
+
+LAYER 2: BUY_OPTIONS bias (unusual — usually we sell)
+LAYER 3: NEUTRAL + BUY bias → LONG_STRADDLE
+
+RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY 22,500 CE (ATM, monthly expiry)     │
+  │ BUY 22,500 PE (ATM, monthly expiry)     │
+  │ Use MONTHLY expiry (not weekly — need   │
+  │ time for post-budget trend to develop)  │
+  │                                         │
+  │ Lots: 3 (event trade, controlled size)  │
+  │ Straddle cost: ₹350/lot                │
+  │ Total cost: ₹350 × 65 × 3 = ₹68,250   │
+  │ Breakeven: below 22,150 or above 22,850│
+  │                                         │
+  │ Entry: Jan 31, 2:00-3:00 PM             │
+  │ (Buy before close, before Feb 1 IV pump)│
+  │                                         │
+  │ Post-Budget Management:                 │
+  │   If Nifty moves > ₹350 in either dir: │
+  │     Exit the losing leg immediately.    │
+  │     Trail stop on winning leg.          │
+  │   If Nifty moves < ₹200 (muted):       │
+  │     Exit both legs (IV crush will kill).│
+  │     Accept ₹20-30K loss.               │
+  │                                         │
+  │ KEY: You're buying MOVEMENT, not        │
+  │ direction. Budget creates movement.     │
+  │ IV crush post-budget is your enemy —    │
+  │ you need a big move to overcome it.     │
+  │                                         │
+  │ Historical: Budget day moves > straddle │
+  │ in 60% of years. Marginal edge.         │
+  │ Size accordingly (small).               │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 13: MOMENTUM BREAKOUT — Bank Nifty Leading","scenario":"Bank Nifty surging, sector rotation into financials","body":`CONTEXT:
+  Wednesday 10:15 AM. Bank Nifty up 1.8% while Nifty up only 0.6%.
+  HDFC Bank +3%, ICICI Bank +2.5%. Sector rotation into financials.
+  FII bought ₹2,100cr yesterday. Nifty futures basis strong at +0.22%.
+  GEX is NEGATIVE (dealers amplifying moves → momentum mode).
+  Opening range already broken to upside at 9:35.
+  Nifty at 22,650 (prev close 22,520).
+
+SIGNALS:
+  #1  FII cash flow:      +0.5    (solid buying)
+  #2  India VIX:          +0.2    (VIX at 14, normal)
+  #3  OI distribution:    +0.3    (price moving away from put wall)
+  #4  Futures basis:      +0.4    (positive, rising through morning)
+  #5  GIFT Nifty gap:     +0.5    (opened gap up, trending)
+  #6  PCR:                +0.2    (1.05, mildly bullish)
+  #7  FII L/S ratio:      +0.4    (ratio 2.5, positive positioning)
+  #9  US overnight:       +0.3    (S&P +0.5%)
+  #10 OI+Price:           +0.5    (long buildup 2nd day)
+  #12 RSI:                -0.1    (approaching overbought on 15-min, not daily)
+  #18 ORB:                +0.7    (strong breakout above OR high, volume 2x)
+  #19 OI unwinding:       +0.5    (fresh call buying, put writing)
+  #24 Sector rotation:    +0.5    (Bank Nifty rank #1, strong)
+
+RAW VALUES:
+  VIX: 14 → NORMAL → 100% exposure
+  GEX: NEGATIVE → MOMENTUM mode
+  IV-RV: +0.2 → neutral bias
+  ATR mult: 1.0
+
+LAYER 1: Composite = +0.41 → MILD_LONG
+LAYER 2: NORMAL, MOMENTUM mode
+LAYER 3: MILD_LONG + NORMAL VIX → BULL_CALL_SPREAD
+         BUT: GEX = MOMENTUM → consider direct BUY_CALL for higher delta
+         Override: in MOMENTUM mode with ORB confirmed → BUY_CALL
+         Confidence: C (composite 0.41)
+
+LAYER 4:
+  Nifty: 22,650. ATM: 22,650.
+  Max call OI: 22,900 (resistance).
+  Buy 22,700 CE at ₹110 (1st OTM, delta ~0.40)
+  Target: 22,850 (below OI wall) → CE at ₹185
+  Stop: CE drops to ₹60
+
+LAYER 5:
+  Risk: ₹50,000 × 0.6 × 1.0 = ₹30,000
+  Loss per lot: (110-60) × 65 = ₹3,250
+  Lots: 30,000 / 3,250 = 9 lots
+  Profit target: ₹75 × 65 × 9 = ₹43,875
+  Max loss: ₹50 × 65 × 9 = ₹29,250
+
+LAYER 6:
+  MOMENTUM mode + ORB confirmed → immediate entry
+  Window: NOW (10:15 AM) — breakout already confirmed
+  Don't wait for afternoon in momentum mode.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY  22,700 CE                          │
+  │ Weekly expiry (Tuesday)                 │
+  │ Lots: 9                                 │
+  │ Entry: ₹110 (immediate — ORB confirmed) │
+  │ Stop: ₹60 (CE premium)                 │
+  │ Target 1: ₹160 (exit 50%) at Nifty 22,800│
+  │ Target 2: ₹185 (exit rest) at 22,850   │
+  │ Time stop: exit by 14:30 if < ₹130     │
+  │ Confidence: C                           │
+  │ Key: Bank Nifty leading = Nifty follows.│
+  │   GEX negative = momentum persists.     │
+  │   Don't fade this move.                 │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 14: SHORT STRANGLE — Low VIX Wednesday Setup","scenario":"VIX crushed, options rich, 6 days to expiry","body":`CONTEXT:
+  Wednesday morning. Fresh series (expired yesterday Tuesday).
+  VIX at 11.8 (complacent). IV-RV spread at 85th percentile.
+  Straddle richness at 75th percentile. GEX positive.
+  No macro events this week. FII neutral. Nifty at 22,500.
+  Everything screams: sell premium.
+
+SIGNALS:
+  Directional signals: near zero (composite = +0.05, dead zone)
+  #2  India VIX:          +0.5    (very low, complacent)
+  #11 GEX:                POSITIVE → MEAN_REVERT (suppress moves)
+  #23 IV-RV:              +0.7    (options very rich)
+  #29 Straddle richness:  +0.6    (overpriced for 6 DTE)
+
+RAW VALUES:
+  VIX: 11.8 → COMPLACENT → 100% exposure
+  GEX: POSITIVE → MEAN_REVERT
+  IV-RV: +0.7 → SELL_OPTIONS
+  ATR mult: 1.35 (low vol, larger sizing OK)
+
+LAYER 1: Composite = +0.05 → NEUTRAL (dead zone)
+LAYER 3: NEUTRAL + COMPLACENT VIX + SELL bias → SHORT_STRANGLE
+         Confidence: B (strong sell setup despite neutral direction)
+
+LAYER 4:
+  Nifty: 22,500. Expected move: ±280 (straddle = ₹330).
+  Max call OI: 22,800. Max put OI: 22,200.
+  Sell 22,800 CE at ₹40 (at call OI wall, outside expected move)
+  Sell 22,200 PE at ₹35 (at put OI wall, outside expected move)
+  Total credit: ₹75 per lot
+  Breakeven: 22,125 to 22,875
+
+LAYER 5:
+  Risk: ₹50,000 × 0.8 × 1.35 = ₹54,000
+  Stop: strangle increases to ₹113 (150% of entry)
+  Loss per lot: ₹38 × 65 = ₹2,470
+  Lots: 54,000 / 2,470 = 21 lots → cap at 15 (strangle risk management)
+  Max profit: ₹75 × 65 × 15 = ₹73,125 (if both expire worthless)
+  Stop loss: ₹38 × 65 × 15 = ₹37,050
+
+MANAGEMENT:
+  Wednesday-Friday: theta decay working for you. Monitor.
+  Monday: if still within range, consider closing for 60-70% profit.
+  Tuesday (expiry): if holding, close by 12:00 PM. Don't hold to 3:30.
+  Adjustment: if one side is tested (Nifty near 22,800 or 22,200):
+    → close the tested side at loss
+    → let the untested side keep decaying
+    → never add to a losing strangle leg
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ SELL 22,800 CE                          │
+  │ SELL 22,200 PE                          │
+  │ Weekly expiry (next Tuesday)            │
+  │ Lots: 15                                │
+  │ Credit: ₹75/lot → total ₹73,125        │
+  │ Entry: 10:00-11:00 AM (sell at peak IV) │
+  │ Stop: strangle value > ₹113             │
+  │ Profit target: exit at ₹25 (67% decay)  │
+  │ Confidence: B                           │
+  │ Warnings: No hedge wings (naked).       │
+  │   Margin required: ~₹4-5L.             │
+  │   Monitor OI walls. If they shift       │
+  │   inward, tighten or close.             │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 15: FII-DII DIVERGENCE BOTTOM — Contrarian Long","scenario":"FII dumping but DII absorbing everything, historic divergence","body":`CONTEXT:
+  Thursday. Nifty has fallen 5% over 2 weeks. FII sold ₹25,000cr
+  in the past 10 days. BUT DII bought ₹22,000cr in same period.
+  FII-DII divergence at 95th percentile (historic extreme).
+  VIX at 22 but stabilizing (was 25 two days ago, now falling).
+  RSI daily at 24 (deeply oversold). Z-score at -2.6.
+  Crude stabilized. USD/INR stopped weakening.
+  Nifty at 21,200.
+
+SIGNALS:
+  #1  FII cash flow:      -0.7    (still selling, but pace slowing)
+  #2  India VIX:          -0.3    (elevated BUT falling → +0.3 change component)
+  #4  Futures basis:      -0.2    (still slight backwardation but improving)
+  #7  FII L/S ratio:      -0.5    (ratio 0.6, bearish positioning)
+  #12 RSI:                +0.8    (deeply oversold all 3 timeframes)
+  #14 DII flow:           +0.5    (massive divergence, DII absorbing)
+  #15 USD/INR:            +0.1    (stabilizing after weakness)
+  #16 Crude:              +0.2    (stopped rising)
+  #17 Z-score:            +0.9    (Z at -2.6, extreme oversold)
+  #21 NLP sentiment:      -0.4    (still negative but extreme = contrarian)
+  #24 Sector rotation:    -0.2    (defensives leading but Bank Nifty improving)
+  #26 Delivery %:         +0.3    (high delivery on down days = genuine selling done)
+
+LAYER 1: Composite = +0.08 → technically dead zone
+  BUT: multiple extreme readings (RSI, Z-score, FII-DII divergence)
+  Manual override consideration: when 3+ signals are at >90th percentile
+  extremes, the composite understates the opportunity.
+  Adjusted composite treating RSI+Z+DII as reinforcing: ~+0.25
+
+LAYER 2: VIX FEAR → 50% exposure. But VIX is FALLING → improving.
+LAYER 3: MILD_LONG + FEAR VIX → BULL_CALL_SPREAD (defined risk)
+         Confidence: C (contrarian trades always C — never go big)
+
+LAYER 4:
+  Nifty: 21,200. Max put OI: 21,000 (strong support).
+  Buy 21,200 CE at ₹190 (ATM)
+  Sell 21,500 CE at ₹85
+  Net debit: ₹105. Max profit: ₹195.
+  Use MONTHLY expiry (need time for recovery).
+
+LAYER 5:
+  VIX cap: 50% → constrained
+  Confidence C → ×0.6
+  Risk: ₹50,000 × 0.6 × 0.50 × 0.8 = ₹12,000
+  Loss per lot: ₹105 × 65 = ₹6,825
+  Lots: 12,000 / 6,825 = 1 lot (yes, JUST ONE)
+  This is correct. Contrarian bottom-fishing = small size.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ BUY  21,200 CE (monthly expiry)         │
+  │ SELL 21,500 CE (monthly expiry)         │
+  │ Lots: 1 (contrarian = tiny size)        │
+  │ Net debit: ₹105 → total ₹6,825         │
+  │ Max profit: ₹195 × 65 = ₹12,675        │
+  │ Entry: 10:00-11:00 AM Thursday          │
+  │ Hold for: 5-10 sessions                 │
+  │ Stop: if Nifty closes below 21,000      │
+  │   (below put OI wall = support broken)  │
+  │ Confidence: C (CONTRARIAN — always small)│
+  │                                         │
+  │ KEY RULES FOR BOTTOM FISHING:           │
+  │   1. NEVER more than 1% risk            │
+  │   2. Use defined risk (spreads only)    │
+  │   3. Use monthly expiry (need time)     │
+  │   4. Scale in: add 1 more lot ONLY if   │
+  │      FII selling slows to <₹1000cr/day  │
+  │      AND VIX drops below 18.            │
+  │   5. If Nifty falls another 3%, CUT.    │
+  │      Don't average down in freefall.    │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 16: RBI MPC DAY — Post-Announcement Volatility Crush","scenario":"RBI kept rates unchanged, VIX crushing post-announcement","body":`CONTEXT:
+  Friday 10:15 AM. RBI MPC announced rates unchanged (in-line).
+  VIX was 18 pre-announcement, now crashing to 14.5 (-20% intraday).
+  Nifty initially dipped 30pts on announcement, now recovering.
+  Options IV is collapsing. Straddle dropped 25% in 30 minutes.
+  Pre-positioned iron condor from yesterday is in profit.
+
+SIGNALS:
+  Pre-event: most signals were neutral (no directional conviction)
+  Post-event (10:15 AM):
+  #2  India VIX:          +0.5    (VIX crushing = very bullish for sellers)
+  #4  Futures basis:      +0.3    (turned positive post-announcement)
+  #23 IV-RV:              +0.9    (IV collapsing toward RV = massive sell signal)
+  #29 Straddle:           +0.8    (straddle overpriced even after crush)
+  Directional: +0.15 (mild, near dead zone)
+
+POST-EVENT STRATEGY:
+  The edge is NOT in direction — it's in VOLATILITY CRUSH.
+  Sell options NOW while IV is still elevated from pre-event pump.
+  IV will continue falling for 2-3 more hours.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ IF you had pre-positioned iron condor:  │
+  │   Hold. Let IV crush work. Target 50%   │
+  │   of max profit by end of day.          │
+  │   If at 50% profit now → CLOSE. Don't   │
+  │   be greedy after events.               │
+  │                                         │
+  │ IF entering fresh post-event:           │
+  │   SELL 22,600 CE + SELL 22,200 PE       │
+  │   (short strangle, OI wall aligned)     │
+  │   Weekly expiry (Tuesday)               │
+  │   Lots: 8                               │
+  │   Credit: ₹65/lot → total ₹33,800      │
+  │   Entry: 10:15-10:30 (sell into crush)  │
+  │   Target: exit Monday at ₹20 (69% decay)│
+  │   Stop: strangle > ₹98                  │
+  │                                         │
+  │ THE PATTERN: IV builds 3-5 days before  │
+  │ RBI MPC. Crushes 20-35% on decision day │
+  │ regardless of outcome. Best entry for   │
+  │ selling: 30 min after announcement.     │
+  │ Next RBI MPC: set calendar alert now.   │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 17: WEEKLY LOSS LIMIT — Reduced Exposure Week","scenario":"Lost 4.5% this week, system enforces reduced trading","body":`CONTEXT:
+  Thursday 9:30 AM. Weekly P&L: -₹2,25,000 on ₹50L capital (-4.5%).
+  Weekly loss limit of 4% was breached yesterday.
+  System is in REDUCED EXPOSURE mode for rest of week.
+  Today's signals are actually strong bullish (composite +0.52).
+  You feel confident about a long trade.
+
+  The system restricts you.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ STATUS: WEEKLY LOSS LIMIT ACTIVE        │
+  │ Weekly P&L: -₹2,25,000 (-4.5%)         │
+  │ Limit: -4.0% (-₹2,00,000)              │
+  │                                         │
+  │ ALLOWED ACTIONS:                        │
+  │   - Max exposure: 50% of normal         │
+  │   - Only DEFINED RISK trades (spreads)  │
+  │   - No naked option selling             │
+  │   - Max 3 lots per trade (down from 10) │
+  │                                         │
+  │ Today's composite: +0.52 (strong long)  │
+  │ MODIFIED RECOMMENDATION:                │
+  │   Bull Call Spread 22,500/22,700        │
+  │   Lots: 3 ONLY (weekly cap)             │
+  │   Debit: ₹90/lot → total ₹17,550       │
+  │   This is 0.35% of capital (not 1%)     │
+  │                                         │
+  │ IF weekly P&L reaches -6% (-₹3,00,000): │
+  │   ALL trading stops until Monday.       │
+  │   Close all positions. Full stop.       │
+  │                                         │
+  │ PSYCHOLOGY NOTE:                        │
+  │   The urge to "make it back" is         │
+  │   strongest after losses. This is       │
+  │   EXACTLY when you should trade LESS.   │
+  │   The limit exists to protect you from  │
+  │   yourself. Trust the system.           │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 18: FRIDAY OVERNIGHT POSITIONING — Weekend Gap Setup","scenario":"Strong signals into Friday close, positioning for Monday","body":`CONTEXT:
+  Friday 2:30 PM. This week: FII bought ₹8,000cr (strongly bullish).
+  Nifty closed at highs today. VIX at 12 (complacent).
+  Futures rollover strong (75%). Bank Nifty outperforming.
+  US market is open tonight. Geopolitical calendar clean for weekend.
+  Want to position for Monday gap up.
+
+SIGNALS (end-of-week summary):
+  #1  FII cash flow:      +0.8    (strong weekly buying)
+  #2  India VIX:          +0.4    (low, complacent)
+  #4  Futures basis:      +0.4    (strong contango)
+  #7  FII L/S ratio:      +0.6    (ratio 3.1, bullish)
+  #10 OI+Price:           +0.5    (long buildup 4th day streak)
+  #24 Sector rotation:    +0.4    (cyclicals leading)
+  #26 Delivery %:         +0.5    (high delivery on up days all week)
+
+LAYER 1: Composite = +0.48 → MILD_LONG (near STRONG threshold)
+LAYER 3: MILD_LONG + COMPLACENT VIX → BULL_CALL_SPREAD
+         Confidence: C+
+
+BUT: this is a WEEKEND HOLD. Additional considerations:
+  - Weekend gap risk (unpredictable events)
+  - US Friday close not known yet
+  - Options theta burns over weekend (advantage for sellers)
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ OPTION A: Defined Risk Overnight        │
+  │ BUY  22,700 CE (next week expiry)       │
+  │ SELL 22,900 CE (next week expiry)       │
+  │ Lots: 5                                 │
+  │ Debit: ₹80/lot → total ₹26,000         │
+  │ This survives any weekend gap down —    │
+  │ max loss is limited to ₹26,000.         │
+  │ Entry: 2:45-3:00 PM Friday              │
+  │                                         │
+  │ OPTION B: No Position (conservative)    │
+  │ Wait for Monday 9:45 AM to enter.       │
+  │ See GIFT Nifty and US Friday close.     │
+  │ If gap up: enter bull spread then.      │
+  │ If gap down: skip or reverse.           │
+  │                                         │
+  │ CHOOSE B if:                            │
+  │   - Any geopolitical risk over weekend  │
+  │   - US market showing weakness Friday   │
+  │   - You already have max weekly exposure │
+  │                                         │
+  │ CHOOSE A if:                            │
+  │   - Clean event calendar                │
+  │   - US futures positive Friday evening  │
+  │   - FII weekly flow was very strong     │
+  │   - You can afford to lose ₹26,000      │
+  │                                         │
+  │ General rule: Friday positions should   │
+  │ ALWAYS be defined risk (spreads).       │
+  │ Never hold naked options over weekend.  │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 19: OI WALL BREAK — Support Crumbles Intraday","scenario":"Nifty breaks below put OI wall, real-time signal shift","body":`CONTEXT:
+  Tuesday (expiry day) 11:30 AM. Nifty opened flat at 22,500.
+  Highest put OI was at 22,400 (strong support).
+  At 11:15, Nifty broke below 22,400. Simultaneously:
+    - Put OI at 22,400 dropped from 12L to 6L (unwinding = support abandoned)
+    - New put OI building at 22,200 (support shifting down)
+    - Futures basis turned negative
+    - PCR dropped from 1.1 to 0.8 in 30 minutes
+  Morning composite was +0.15 (neutral). Now signals are shifting.
+
+REAL-TIME SIGNAL UPDATES (11:30 AM):
+  #3  OI distribution:    -0.5    (OI wall broken, new support 200pts lower)
+  #4  Futures basis:      -0.5    (just turned negative)
+  #6  PCR:                -0.4    (PCR crashed from 1.1 to 0.8)
+  #10 OI+Price:           -0.5    (short buildup intraday)
+  #19 OI unwinding:       -0.6    (put OI wall abandoned = BEARISH)
+
+  Updated composite: -0.32 → shifted from neutral to MILD_SHORT
+
+THIS IS THE MOST VALUABLE SIGNAL IN THE SYSTEM:
+  OI wall breaks are LEAD indicators. When institutional support
+  (put OI) is abandoned, price follows within 30-60 minutes.
+  You see it in the OI BEFORE you see it in price.
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ IMMEDIATE: Close any existing longs.    │
+  │                                         │
+  │ NEW TRADE:                              │
+  │ BUY  22,400 PE (now ATM)               │
+  │ Weekly expiry (today — expiry day!)     │
+  │ Lots: 5                                 │
+  │ Entry: ₹55 (immediate, 11:30 AM)       │
+  │ Target: Nifty 22,250 → PE at ₹150+     │
+  │ Stop: Nifty reclaims 22,450 → PE at ₹25│
+  │ Time limit: EXIT BY 14:00 (expiry day!) │
+  │                                         │
+  │ WHY expiry day PE buy works here:       │
+  │   - Gamma is MASSIVE on expiry day      │
+  │   - If Nifty drops 150pts, this PE      │
+  │     goes from ₹55 to ₹150+ (3x)        │
+  │   - Risk is defined: max loss = ₹55/lot │
+  │   - Time: 2.5 hours for move to happen  │
+  │                                         │
+  │ CRITICAL: This is expiry day gamma play.│
+  │   Set HARD exit at 14:00. No exceptions.│
+  │   After 14:00 gamma works against you   │
+  │   even harder. Don't hold into close.   │
+  │                                         │
+  │ Confidence: B (OI wall break is high    │
+  │   conviction signal)                    │
+  └─────────────────────────────────────────┘
+`},{"title":"EXAMPLE 20: ELECTION RESULT DAY — Binary Event","scenario":"State election results being counted, massive uncertainty","body":`CONTEXT:
+  Major state election results day (e.g., Maharashtra or UP).
+  VIX spiked to 23 yesterday. Nifty volatile in pre-market.
+  GIFT Nifty swinging ±1% as exit polls leak.
+  FII was neutral going in. Options IV at 95th percentile.
+  Nobody knows the outcome. This is pure binary risk.
+
+SIGNALS:
+  Directional: UNRELIABLE today. All signals are noise.
+  #2  India VIX:          -0.6    (high fear)
+  #23 IV-RV:              +0.9    (options extremely expensive)
+  #29 Straddle:           +0.8    (straddle pricing massive move)
+  Other directional signals: ignore today (event overwhelms)
+
+FINAL RECOMMENDATION:
+  ┌─────────────────────────────────────────┐
+  │ PRE-RESULT (before 10 AM counting):     │
+  │ ACTION: NO NEW DIRECTIONAL TRADES       │
+  │                                         │
+  │ Reduce existing exposure by 60%.        │
+  │ Any positions held should be hedged     │
+  │ or in defined-risk spreads only.        │
+  │                                         │
+  │ POST-RESULT (after trend is clear):     │
+  │ Wait for:                               │
+  │   1. Clear winner emerging (by 12-1 PM) │
+  │   2. VIX starting to fall (confirms     │
+  │      market digesting the news)         │
+  │   3. 30 minutes of stable price action  │
+  │                                         │
+  │ If PRO-MARKET result:                   │
+  │   IV will CRUSH 25-40%. Position for it:│
+  │   SELL OTM strangle at OI walls         │
+  │   Let IV crush generate your profit.    │
+  │   Also: buy 22,500 CE if clear uptrend  │
+  │   Lots: 5 (moderate, post-clarity)      │
+  │                                         │
+  │ If ANTI-MARKET result:                  │
+  │   Gap down will happen. DON'T short     │
+  │   the gap — it often reverses intraday. │
+  │   Wait until 2 PM for stabilization.    │
+  │   Then: small bull spread if oversold.  │
+  │   Lots: 2 (very small, high uncertainty)│
+  │                                         │
+  │ RULES FOR BINARY EVENTS:                │
+  │   1. Never predict the outcome.         │
+  │   2. Reduce before, react after.        │
+  │   3. The IV crush post-event is more    │
+  │      reliable than the direction.       │
+  │   4. Market overreacts intraday and     │
+  │      corrects within 2-3 sessions.      │
+  │   5. Best strategy: sell straddle AFTER │
+  │      result is clear (sell the crush).  │
+  └─────────────────────────────────────────┘
+`}];
 
 
 // ─── NAV ───
@@ -3333,6 +4887,91 @@ renderEncyclopedia();
 renderTop30();
 renderRisk();
 renderStrike();
+renderReco();
+
+// ─── PAGE 6: RECOMMENDATION ENGINE ───
+function renderReco() {
+  const el = document.getElementById('page-reco');
+  let expandedEx = null;
+
+  // Color coding per example type
+  const colors = {
+    '1': '#0f766e', '2': '#dc2626', '3': '#7c3aed', '4': '#2563eb',
+    '5': '#64748b', '6': '#ea580c', '7': '#b91c1c', '8': '#0369a1',
+    '9': '#9333ea', '10': '#65a30d', '11': '#dc2626', '12': '#4338ca',
+    '13': '#0f766e', '14': '#ea580c', '15': '#2563eb', '16': '#7c3aed',
+    '17': '#b91c1c', '18': '#65a30d', '19': '#dc2626', '20': '#9333ea',
+  };
+  const icons = {
+    '1': '📈', '2': '📉', '3': '📌', '4': '🟢',
+    '5': '⏸️', '6': '🦅', '7': '🚨', '8': '🔄',
+    '9': '📋', '10': '📅', '11': '🚫', '12': '🎰',
+    '13': '🚀', '14': '💰', '15': '🔻', '16': '🏛️',
+    '17': '⛔', '18': '🌙', '19': '💥', '20': '🗳️',
+  };
+  const tags = {
+    '1': 'BULLISH', '2': 'BEARISH', '3': 'PIN TRADE', '4': 'MILD LONG',
+    '5': 'NO TRADE', '6': 'IRON CONDOR', '7': 'PANIC MODE', '8': 'INTRADAY',
+    '9': 'EARNINGS', '10': 'TAX DATE', '11': 'BLOCKED', '12': 'STRADDLE',
+    '13': 'BREAKOUT', '14': 'STRANGLE', '15': 'CONTRARIAN', '16': 'RBI EVENT',
+    '17': 'LOSS LIMIT', '18': 'OVERNIGHT', '19': 'OI BREAK', '20': 'ELECTION',
+  };
+
+  function render() {
+    let h = `
+      <div class="page-header">
+        <div class="page-label">Recommendation Engine</div>
+        <div class="page-title">20 Live Trade Examples</div>
+        <p class="page-subtitle">Complete signal-to-execution walkthroughs covering every scenario. Each traces the full 7-layer pipeline.</p>
+      </div>
+      <div class="info-box purple">
+        <div class="info-box-title" style="color:var(--purple)">🔥 How to Read These Examples</div>
+        <div class="info-box-text">
+          Each example shows: <strong>Context</strong> (market situation) → <strong>Signal Scores</strong> (all 30 inputs) → <strong>Layer-by-Layer Processing</strong> (composite → regime → instrument → strike → size) → <strong>Final Recommendation Box</strong> (exact trade with lots, stops, targets).<br>
+          These cover: directional trades, neutral income, pin trades, panic mode, no-trade days, event plays, intraday scalps, and circuit breaker blocks.
+        </div>
+      </div>
+    `;
+
+    recoData.forEach((ex, i) => {
+      const num = String(i + 1);
+      const isOpen = expandedEx === i;
+      const color = colors[num] || '#64748b';
+      const icon = icons[num] || '📋';
+      const tag = tags[num] || 'TRADE';
+
+      h += '<div class="card ' + (isOpen ? 'expanded' : '') + '" onclick="toggleReco(' + i + ')">' +
+        '<div class="card-header">' +
+          '<span class="card-icon">' + icon + '</span>' +
+          '<div style="flex:1">' +
+            '<div class="card-title" style="color:' + color + '">' + esc(ex.title) + '</div>' +
+            '<div class="card-meta">' + esc(ex.scenario) + '</div>' +
+          '</div>' +
+          '<span class="badge" style="background:' + color + '">' + tag + '</span>' +
+          '<span class="card-arrow">▾</span>' +
+        '</div>';
+
+      if (isOpen) {
+        h += '<div class="code-block" style="margin-top:12px;display:block">' + esc(ex.body) + '</div>';
+      }
+      h += '</div>';
+    });
+
+    // Pseudocode link
+    h += '<div class="info-box purple" style="margin-top:20px">' +
+      '<div class="info-box-title" style="color:var(--purple)">💻 Full Pseudocode Engine</div>' +
+      '<div class="info-box-text">' +
+        'The complete 7-layer recommendation engine (compute_composite → determine_regime → decide_trade → select_strike → compute_size_and_stops → determine_entry_time → validate_and_output) is available as a Python file.<br><br>' +
+        '<strong>Key function:</strong> generate_recommendation(signals, raw_values, market_data, capital) → returns a complete trade recommendation dict with action, instrument, legs, lots, stop loss, target, entry window, and confidence grade.' +
+      '</div>' +
+    '</div>';
+
+    el.innerHTML = h;
+  }
+
+  window.toggleReco = function(idx) { expandedEx = expandedEx === idx ? null : idx; render(); };
+  render();
+}
 </script>
 </body>
 </html>
