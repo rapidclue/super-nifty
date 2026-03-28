@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nifty Options Trading — Rule-Based Cheat Sheet</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-alt: #F5F4F0;
+    --border: #E8E6E1;
+    --border-strong: #D4D1C9;
+    --text-primary: #1A1918;
+    --text-secondary: #6B6860;
+    --text-muted: #9B978E;
+    --accent-green: #1B7A4A;
+    --accent-green-bg: #E8F5EE;
+    --accent-red: #C4321C;
+    --accent-red-bg: #FDE8E4;
+    --accent-amber: #A16207;
+    --accent-amber-bg: #FEF3C7;
+    --accent-blue: #1D5FA6;
+    --accent-blue-bg: #E0EDFB;
+    --accent-purple: #6B21A8;
+    --accent-purple-bg: #F3E8FF;
+    --radius: 10px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .header {
+    padding: 48px 40px 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .header-inner {
+    max-width: 1320px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 42px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .header h1 span {
+    font-style: italic;
+    color: var(--accent-green);
+  }
+
+  .header-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .header-meta strong { color: var(--text-secondary); }
+
+  /* Navigation */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(250,250,248,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+  }
+
+  .nav-inner {
+    max-width: 1320px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-inner::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    padding: 14px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .nav-btn:hover { color: var(--text-primary); }
+  .nav-btn.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--text-primary);
+  }
+
+  /* Main */
+  .main {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .section-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    max-width: 680px;
+  }
+
+  /* Cards Grid */
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.25s;
+  }
+
+  .card:hover { box-shadow: var(--shadow-md); }
+
+  .card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-label .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .dot-green { background: var(--accent-green); }
+  .dot-red { background: var(--accent-red); }
+  .dot-amber { background: var(--accent-amber); }
+  .dot-blue { background: var(--accent-blue); }
+  .dot-purple { background: var(--accent-purple); }
+
+  .card h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .card p, .card li {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+
+  .card ul { list-style: none; padding: 0; }
+  .card ul li {
+    padding: 5px 0;
+    border-bottom: 1px solid var(--surface-alt);
+    display: flex;
+    gap: 8px;
+  }
+  .card ul li:last-child { border-bottom: none; }
+  .card ul li::before {
+    content: '→';
+    color: var(--text-muted);
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-top: 1px;
+  }
+
+  /* Rule Blocks */
+  .rule {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+  }
+
+  .rule:last-child { margin-bottom: 0; }
+
+  .rule-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .rule-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .rule-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .badge-green { background: var(--accent-green-bg); color: var(--accent-green); }
+  .badge-red { background: var(--accent-red-bg); color: var(--accent-red); }
+  .badge-amber { background: var(--accent-amber-bg); color: var(--accent-amber); }
+  .badge-blue { background: var(--accent-blue-bg); color: var(--accent-blue); }
+  .badge-purple { background: var(--accent-purple-bg); color: var(--accent-purple); }
+
+  .rule p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .rule code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-primary);
+  }
+
+  /* Table */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface-alt);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--surface-alt);
+    vertical-align: top;
+    color: var(--text-secondary);
+  }
+
+  tbody tr:hover { background: var(--surface-alt); }
+  tbody td:first-child { font-weight: 500; color: var(--text-primary); }
+
+  /* Flowchart */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+    margin: 20px 0;
+  }
+
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    text-align: center;
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .flow-step strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .flow-step span {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .flow-arrow {
+    font-size: 20px;
+    color: var(--text-muted);
+    padding: 4px 0;
+  }
+
+  .flow-decision {
+    background: var(--accent-amber-bg);
+    border-color: var(--accent-amber);
+  }
+
+  .flow-decision strong { color: var(--accent-amber); }
+
+  .flow-go {
+    background: var(--accent-green-bg);
+    border-color: var(--accent-green);
+  }
+
+  .flow-go strong { color: var(--accent-green); }
+
+  .flow-nogo {
+    background: var(--accent-red-bg);
+    border-color: var(--accent-red);
+  }
+
+  .flow-nogo strong { color: var(--accent-red); }
+
+  /* Checklist */
+  .checklist {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+  }
+
+  .checklist h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--surface-alt);
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+
+  .check-item:last-child { border-bottom: none; }
+
+  .check-box {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 11px;
+    color: transparent;
+  }
+
+  .check-box.checked {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #fff;
+  }
+
+  /* Callout */
+  .callout {
+    border-left: 3px solid;
+    padding: 14px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .callout-amber { border-color: var(--accent-amber); background: var(--accent-amber-bg); }
+  .callout-red { border-color: var(--accent-red); background: var(--accent-red-bg); }
+  .callout-green { border-color: var(--accent-green); background: var(--accent-green-bg); }
+  .callout-blue { border-color: var(--accent-blue); background: var(--accent-blue-bg); }
+
+  .callout strong { color: var(--text-primary); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .header, .nav, .main { padding-left: 20px; padding-right: 20px; }
+    .header h1 { font-size: 30px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .flow-step { min-width: unset; }
+  }
+
+  /* Print */
+  @media print {
+    .nav { display: none; }
+    .section { display: block !important; page-break-inside: avoid; margin-bottom: 40px; }
+    .card, .checklist { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>Nifty Options <span>Cheat Sheet</span></h1>
+      <p style="font-size:14px;color:var(--text-secondary);margin-top:8px;">Rule-based intraday trading system — consolidated reference</p>
+    </div>
+    <div class="header-meta">
+      <strong>Lot Size:</strong> 65 &nbsp;|&nbsp; <strong>Expiry:</strong> Tuesday<br>
+      <strong>Session:</strong> 09:15 – 15:30 IST &nbsp;|&nbsp; <strong>Broker:</strong> Dhan
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="nav-inner">
+    <button class="nav-btn active" data-tab="premarket">Pre-Market</button>
+    <button class="nav-btn" data-tab="daytype">Day-Type</button>
+    <button class="nav-btn" data-tab="signals">Top Signals</button>
+    <button class="nav-btn" data-tab="entry">Entry Rules</button>
+    <button class="nav-btn" data-tab="strike">Strike Selection</button>
+    <button class="nav-btn" data-tab="risk">Risk Mgmt</button>
+    <button class="nav-btn" data-tab="exit">Exit Rules</button>
+    <button class="nav-btn" data-tab="checklist">Checklists</button>
+    <button class="nav-btn" data-tab="mistakes">Mistake Log</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ===================== PRE-MARKET ===================== -->
+  <div class="section active" id="premarket">
+    <h2 class="section-title">Pre-Market Routine</h2>
+    <p class="section-subtitle">Complete before 09:10 IST. This sets your directional bias, day-type hypothesis, and position sizing framework.</p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-label"><span class="dot dot-blue"></span> Macro Scan</div>
+        <h3>Global Cues & Overnight Context</h3>
+        <ul>
+          <li>SGX Nifty / GIFT Nifty premium/discount vs previous close</li>
+          <li>US Futures (ES, NQ) — direction + magnitude since Asia open</li>
+          <li>Crude Oil (Brent) — sharp moves >2% flag risk-off</li>
+          <li>USD/INR — sudden INR weakness = FII selling pressure</li>
+          <li>US 10Y yield — rising yields = headwind for growth/IT</li>
+          <li>VIX (India VIX + CBOE VIX) — regime check</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-green"></span> Options Data</div>
+        <h3>OI, PCR & IV Landscape</h3>
+        <ul>
+          <li>Previous day OI build-up at key strikes (max pain zone)</li>
+          <li>PCR (Put-Call Ratio) — &lt;0.7 bearish, 0.7–1.0 neutral, &gt;1.0 bullish</li>
+          <li>IVP (IV Percentile) — &gt;60 = high premium, favor selling; &lt;30 = cheap, favor buying</li>
+          <li>ATM Straddle price → expected move = straddle × 0.6</li>
+          <li>GEX (Gamma Exposure) — positive = mean-reverting, negative = trending</li>
+          <li>FII/DII previous day net — FII selling + DII buying = choppy; aligned = trending</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-amber"></span> Key Levels</div>
+        <h3>Support & Resistance Map</h3>
+        <ul>
+          <li>Previous Day High / Low / Close (PDH/PDL/PDC)</li>
+          <li>Opening Range (first 15min) — High/Low of 09:15–09:30 candle</li>
+          <li>VWAP of previous session (carry-forward anchor)</li>
+          <li>Max OI strike levels (call wall = resistance, put wall = support)</li>
+          <li>CPR (Central Pivot Range) — narrow CPR = trending, wide = range</li>
+          <li>Round numbers (e.g., 22000, 22500) — psychological magnets</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-red"></span> Event Calendar</div>
+        <h3>Binary Risk Check</h3>
+        <ul>
+          <li>RBI policy announcement — reduce size by 50%</li>
+          <li>Expiry day (Tuesday) — theta crush + gamma risk = reduce size</li>
+          <li>US FOMC / CPI / NFP — if releasing during market hours, hedge or sit out</li>
+          <li>Quarterly results (HDFC, Reliance, TCS) — sector spill-over risk</li>
+          <li>Budget / election result days — avoid directional, use straddles if playing</li>
+          <li>Nifty rebalancing days — unusual flows</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DAY-TYPE ===================== -->
+  <div class="section" id="daytype">
+    <h2 class="section-title">Day-Type Classification</h2>
+    <p class="section-subtitle">Never commit to a day-type before 09:45 IST. The first 30 minutes establish the opening range and initial context. Reclassify at 11:00 and 13:00.</p>
+
+    <div class="callout callout-amber">
+      <strong>Rule:</strong> Wait until 09:45 IST. The opening 15–30 min candle defines the opening range. Day-type hypothesis forms only after price interacts with VWAP + Opening Range boundaries.
+    </div>
+
+    <div class="grid grid-3" style="margin-top:20px;">
+      <div class="card" style="border-top: 3px solid var(--accent-green);">
+        <div class="card-label"><span class="dot dot-green"></span> Trending Day</div>
+        <h3>Directional Momentum</h3>
+        <div class="rule">
+          <div class="rule-title">Detection Signals</div>
+          <p style="margin-top:6px;">
+            Gap &gt;0.5% that <strong>doesn't fill in 30 min</strong> · Price stays one side of VWAP all session · 
+            Negative GEX · IVP &lt;40 · PCR extreme (&lt;0.65 or &gt;1.3) · FII + DII aligned · 
+            Opening range break with volume surge &gt;1.5× average
+          </p>
+        </div>
+        <div class="rule" style="margin-top:8px;">
+          <div class="rule-title">Playbook</div>
+          <p style="margin-top:6px;">
+            Buy ATM/slight OTM options in direction · Trail SL using 5-min swing lows/highs · 
+            Don't counter-trade · Add on pullbacks to VWAP · Hold winners till 14:30+
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="border-top: 3px solid var(--accent-amber);">
+        <div class="card-label"><span class="dot dot-amber"></span> Range-Bound Day</div>
+        <h3>Rotational / Balanced</h3>
+        <div class="rule">
+          <div class="rule-title">Detection Signals</div>
+          <p style="margin-top:6px;">
+            Small gap (&lt;0.3%) that fills quickly · Price oscillates around VWAP · 
+            Positive GEX · Narrow CPR · IVP 40–60 · PCR near 0.85–1.05 · 
+            No sector leadership — breadth flat
+          </p>
+        </div>
+        <div class="rule" style="margin-top:8px;">
+          <div class="rule-title">Playbook</div>
+          <p style="margin-top:6px;">
+            Sell OTM options (iron condors / strangles) · Fade extremes near PDH/PDL · 
+            Book profits quickly — 50% of premium target · Avoid breakout chasing · 
+            Cut if range breaks with volume
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="border-top: 3px solid var(--accent-purple);">
+        <div class="card-label"><span class="dot dot-purple"></span> Mean-Reversion Day</div>
+        <h3>Gap-Fill / Snap-Back</h3>
+        <div class="rule">
+          <div class="rule-title">Detection Signals</div>
+          <p style="margin-top:6px;">
+            Gap &gt;0.5% that begins filling within first 15 min · Price crosses VWAP within 30 min · 
+            Positive GEX · IVP &gt;50 (overpriced) · Opening range break <strong>fails</strong> · 
+            FII/DII divergent flows
+          </p>
+        </div>
+        <div class="rule" style="margin-top:8px;">
+          <div class="rule-title">Playbook</div>
+          <p style="margin-top:6px;">
+            Fade the gap — trade toward gap-fill level (PDC) · Sell premium on gap side · 
+            Tight SL beyond gap extreme · Target is VWAP then PDC · 
+            Exit if gap-fill fails at 50% retrace
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Signal</th>
+              <th>Trending</th>
+              <th>Range-Bound</th>
+              <th>Mean-Reversion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Gap Size</td><td>&gt;0.5%, doesn't fill</td><td>&lt;0.3%, fills fast</td><td>&gt;0.5%, starts filling</td></tr>
+            <tr><td>VWAP</td><td>Price stays one side</td><td>Oscillates around it</td><td>Crosses within 30 min</td></tr>
+            <tr><td>GEX</td><td>Negative</td><td>Positive</td><td>Positive</td></tr>
+            <tr><td>PCR</td><td>&lt;0.65 or &gt;1.3</td><td>0.85 – 1.05</td><td>Moderate extreme</td></tr>
+            <tr><td>IVP</td><td>&lt;40</td><td>40 – 60</td><td>&gt;50</td></tr>
+            <tr><td>CPR Width</td><td>Narrow</td><td>Wide OR Narrow</td><td>Wide</td></tr>
+            <tr><td>FII/DII</td><td>Aligned</td><td>Muted</td><td>Divergent</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SIGNALS ===================== -->
+  <div class="section" id="signals">
+    <h2 class="section-title">Top 30 Priority Signals</h2>
+    <p class="section-subtitle">Organized by category. Each signal has been scored for alpha potential, latency, and implementation complexity from your 108-signal taxonomy.</p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-label"><span class="dot dot-green"></span> Category 1 — Price Action</div>
+        <h3>Structure & Momentum</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">VWAP Cross + Hold</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Price crosses VWAP on 5-min, holds for 2 candles. Directional signal. Combine with volume confirmation.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Opening Range Breakout</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Break above/below 09:15–09:30 range with <code>vol &gt; 1.5× avg</code>. Enter on retest. SL = opposite side of range.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">PDH/PDL Break</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Previous day high/low break with momentum. Stronger if aligns with OI build-up direction.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Higher High / Lower Low Sequence</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>3 consecutive HH+HL (bullish) or LH+LL (bearish) on 5-min confirms micro-trend.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-blue"></span> Category 2 — Volume & Flow</div>
+        <h3>Participation & Conviction</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">CVD Divergence</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Price makes new high but CVD (Cumulative Volume Delta) doesn't → exhaustion. Reversal signal. Source via GoCharting.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Volume Profile POC Shift</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Intraday Point of Control migrating up/down = institutional repositioning. Trade in direction of POC shift.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Volume Spike on Breakout</span><span class="rule-badge badge-amber">MEDIUM</span></div><p><code>Volume &gt; 2× 20-period avg</code> on level break = conviction. Low-volume breakouts are traps.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Order Book Imbalance</span><span class="rule-badge badge-blue">DATA: DHAN API</span></div><p>Bid-ask depth imbalance &gt;60:40 at key levels signals pending move. Monitor via Dhan websocket feed.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-amber"></span> Category 3 — Options Flow</div>
+        <h3>Positioning & Smart Money</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">OI Build-Up Direction</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Rising price + rising CE OI = call writing (bearish). Rising price + rising PE OI = put writing (bullish support).</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">PCR Shift Speed</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>PCR changing &gt;0.15 in 30 min = aggressive repositioning. Trade in direction of put writers.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">ATM IV Crush/Expansion</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Sudden IV drop on ATM = big player sold straddle (range expectation). IV spike = expecting move.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">IV Skew Shift</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>PE IV rising faster than CE IV = fear/hedging = potential support. Reverse = distribution.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-purple"></span> Category 4 — Market Microstructure</div>
+        <h3>Breadth, Internals & Cross-Asset</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Advance-Decline Ratio</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Nifty up but A/D &lt;1.0 = narrow rally, likely to fade. Strong breadth (&gt;2.0) = sustainable.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Bank Nifty vs Nifty Divergence</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>If Bank Nifty leads Nifty by &gt;0.3% = banks driving, expect Nifty follow-through. Divergence = caution.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">India VIX Intraday Spike</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>VIX spike &gt;5% intraday while Nifty flat = storm brewing. Reduce position. VIX crush + Nifty up = bullish.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">FII Intraday Index Futures</span><span class="rule-badge badge-blue">DATA: NSE</span></div><p>Real-time FII index futures position change. Net longs increasing = bullish conviction. Source via NSE provisional data.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-red"></span> Category 5 — Technical Indicators</div>
+        <h3>Momentum & Mean-Reversion Triggers</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">RSI Divergence (5-min)</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Price new high + RSI lower high = bearish divergence. Most reliable near PDH/PDL or OI walls.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">MACD Histogram Flip</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Histogram crossing zero on 5-min, aligned with 15-min direction. Confirmation signal, not standalone.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">EMA 9/21 Cross (5-min)</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Fast EMA cross on 5-min when aligned with VWAP direction. Lagging but reliable for trend confirmation.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Bollinger Band Squeeze</span><span class="rule-badge badge-amber">MEDIUM</span></div><p>Bandwidth at 20-period low = compression → expansion imminent. Trade the breakout direction.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-blue"></span> Category 6 — Multi-Timeframe</div>
+        <h3>Alignment & Confluence Scoring</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">3-TF Alignment</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>15-min bias + 5-min structure + 1-min entry all aligned = A+ trade. If only 2 of 3 align = B trade, reduce size.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Higher TF Support/Resistance</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>1-min entry at a level that's also 15-min or daily S/R = highest conviction. Add size.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Confluence Score ≥ 4</span><span class="rule-badge badge-green">HIGH ALPHA</span></div><p>Score: VWAP(1) + OI wall(1) + Volume(1) + RSI div(1) + TF alignment(1) + GEX(1). Trade only when score ≥ 4/6.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ENTRY RULES ===================== -->
+  <div class="section" id="entry">
+    <h2 class="section-title">Entry Rules & Timing</h2>
+    <p class="section-subtitle">Hard rules for when to enter, when to wait, and when to stay flat. Discipline over prediction.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <strong>1. Check Day-Type Hypothesis</strong>
+        <span>Is it after 09:45? Do you have a day-type classification?</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step flow-decision">
+        <strong>2. Confluence Score ≥ 4?</strong>
+        <span>VWAP + OI + Volume + RSI + TF alignment + GEX</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step flow-decision">
+        <strong>3. Risk Check Passed?</strong>
+        <span>Max loss per trade ≤ 1% of capital. No event risk.</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step flow-go">
+        <strong>4. Enter Trade</strong>
+        <span>Log entry reason, SL, target, and day-type in journal.</span>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:24px;">
+      <div class="card">
+        <div class="card-label"><span class="dot dot-green"></span> Entry Timing Windows</div>
+        <h3>When to Trade</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">09:45 – 10:30</span><span class="rule-badge badge-green">PRIMARY</span></div><p>Post opening range formation. Highest probability setups. ORB trades, gap plays, VWAP reclaim/rejection.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">11:30 – 12:30</span><span class="rule-badge badge-amber">SECONDARY</span></div><p>Mid-session momentum. European market open (14:00 IST) can bring fresh flows. Trend continuation setups.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">14:00 – 14:45</span><span class="rule-badge badge-amber">SECONDARY</span></div><p>Last-hour momentum. Institutional closing flows. Do NOT enter new positions after 14:45 (theta + gamma risk).</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-red"></span> Dead Zones — No New Trades</div>
+        <h3>When NOT to Trade</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">09:15 – 09:45</span><span class="rule-badge badge-red">AVOID</span></div><p>Opening chaos. Spreads wide. Emotional orders. Wait for opening range to form. Exception: pre-planned gap plays with SL.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">12:30 – 13:30</span><span class="rule-badge badge-red">AVOID</span></div><p>Lunch lull. Low volume, choppy. Whipsaws common. Manage existing positions only.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">After 14:45</span><span class="rule-badge badge-red">AVOID</span></div><p>No new entries. Theta decay accelerates. Close/trail existing positions. Exception: expiry day scalps with defined risk.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== STRIKE SELECTION ===================== -->
+  <div class="section" id="strike">
+    <h2 class="section-title">Strike Selection Framework</h2>
+    <p class="section-subtitle">Choose strikes based on day-type, IV environment, time to expiry, and expected move size.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Buy Strategy</th>
+            <th>Strike Choice</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Trending Day + Low IVP (&lt;40)</td>
+            <td>Buy Options</td>
+            <td>ATM or 1-strike OTM</td>
+            <td>Cheap premium, high gamma, max delta participation in trend</td>
+          </tr>
+          <tr>
+            <td>Range Day + High IVP (&gt;60)</td>
+            <td>Sell Options</td>
+            <td>OTM (beyond expected move)</td>
+            <td>Rich premium, theta decay in your favor, range provides safety</td>
+          </tr>
+          <tr>
+            <td>Expiry Day (0 DTE)</td>
+            <td>Buy ATM only</td>
+            <td>ATM ± 0–1 strike</td>
+            <td>Gamma highest at ATM. OTM decays to zero. Tight SL mandatory.</td>
+          </tr>
+          <tr>
+            <td>Mean-Reversion + Gap Fill</td>
+            <td>Buy counter-gap direction</td>
+            <td>ATM (gap-fill direction)</td>
+            <td>Need delta for quick move. Exit at VWAP/PDC, not greedy.</td>
+          </tr>
+          <tr>
+            <td>Pre-Event (RBI, FOMC)</td>
+            <td>Long Straddle / Strangle</td>
+            <td>ATM Straddle OR ±2 OTM Strangle</td>
+            <td>Volatility expansion expected. Buy before, exit on vol spike.</td>
+          </tr>
+          <tr>
+            <td>Post-Event (IV crush)</td>
+            <td>Sell Options / Iron Condor</td>
+            <td>OTM both sides</td>
+            <td>IV will crush. Sell premium and let theta work.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-blue" style="margin-top:20px;">
+      <strong>Expected Move Formula:</strong> ATM Straddle Price × 0.6 = Expected intraday range. Place short strikes <em>outside</em> this range for selling strategies. For buying strategies, your target should be within 70% of this range.
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>Lot Size Reminder:</strong> Nifty lot = <code>65</code>. Minimum trade = 1 lot. Position size = (Max Loss per trade) ÷ (SL in points × 65). Always calculate before entering.
+    </div>
+  </div>
+
+  <!-- ===================== RISK MANAGEMENT ===================== -->
+  <div class="section" id="risk">
+    <h2 class="section-title">Risk Management Rules</h2>
+    <p class="section-subtitle">These are non-negotiable. Break a risk rule = shut down for the day.</p>
+
+    <div class="grid grid-2">
+      <div class="card" style="border: 2px solid var(--accent-red);">
+        <div class="card-label"><span class="dot dot-red"></span> Hard Limits</div>
+        <h3>Non-Negotiable Rules</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Per-Trade Max Loss</span><span class="rule-badge badge-red">≤ 1% of Capital</span></div><p>No single trade risks more than 1% of total trading capital. Calculate before entry: <code>SL pts × 65 × lots ≤ 1% capital</code></p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Daily Max Loss</span><span class="rule-badge badge-red">≤ 2% of Capital</span></div><p>Hit 2% daily drawdown → stop trading. No exceptions. No revenge trades. Close all positions.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Weekly Max Loss</span><span class="rule-badge badge-red">≤ 5% of Capital</span></div><p>3 losing days in a row OR 5% weekly drawdown → pause for the week. Review all trades.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Max Concurrent Positions</span><span class="rule-badge badge-red">≤ 3</span></div><p>No more than 3 open positions at once. Each must have independent thesis. No doubling down on losers.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Max Lots (Per Trade)</span><span class="rule-badge badge-red">SIZE LIMIT</span></div><p>Scale based on confidence: A+ setup = full size, B setup = 60%, C setup = 30%. Never exceed max lots from sizing formula.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-amber"></span> Position Sizing</div>
+        <h3>Sizing Formula & Adjustments</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Base Formula</span><span class="rule-badge badge-blue">FORMULA</span></div>
+          <p style="margin-top:6px;"><code>Lots = (Capital × 1%) ÷ (SL in points × 65)</code></p>
+          <p style="margin-top:4px;">Example: ₹10L capital, 30pt SL → Lots = (10,000) ÷ (30 × 65) = 5.1 → <strong>5 lots</strong></p>
+        </div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Adjustments</span><span class="rule-badge badge-amber">MODIFIERS</span></div>
+          <p style="margin-top:6px;">
+            Event day: × 0.5 · Expiry day: × 0.5 · Losing streak (3+): × 0.5 · 
+            A+ confluence (≥5/6): × 1.0 · B setup (3–4/6): × 0.6 · 
+            After daily target hit: × 0.3 (house money only)
+          </p>
+        </div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Scaling In</span><span class="rule-badge badge-green">OPTIONAL</span></div>
+          <p style="margin-top:6px;">
+            Enter 60% at initial signal. Add 40% on confirmation (e.g., VWAP hold after breakout). 
+            Never average losers. Only add to winners with confirming price action.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== EXIT RULES ===================== -->
+  <div class="section" id="exit">
+    <h2 class="section-title">Exit Rules</h2>
+    <p class="section-subtitle">Exits matter more than entries. Pre-define every exit before you enter.</p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-label"><span class="dot dot-red"></span> Stop-Loss Rules</div>
+        <h3>When to Cut</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Initial SL</span><span class="rule-badge badge-red">MANDATORY</span></div><p>Set at entry. Based on structure (below swing low / above swing high on 5-min). Never a round number — always give 2–3pts buffer. SL order placed immediately.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Time-Based SL</span><span class="rule-badge badge-amber">15 MIN RULE</span></div><p>If trade hasn't moved in your favor within 15 minutes, exit at market or tighten SL to breakeven. Dead trades = opportunity cost.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Day-Type Invalidation</span><span class="rule-badge badge-red">EXIT ALL</span></div><p>If your day-type classification flips (trending → range), exit all positions based on old thesis. Reassess from scratch.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">VWAP Invalidation</span><span class="rule-badge badge-red">CUT</span></div><p>Long trade: if price closes below VWAP on 5-min candle, exit. Short trade: close above VWAP = exit. This overrides structure-based SL.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-green"></span> Profit-Taking Rules</div>
+        <h3>When to Book</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Partial Exit: 50% at 1:1 R:R</span><span class="rule-badge badge-green">BOOK</span></div><p>Book half at 1:1 risk-reward. Move SL to breakeven on remainder. Locks in guaranteed profit.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Trail: Swing-Based</span><span class="rule-badge badge-green">TRAIL</span></div><p>Remaining 50%: trail SL below each new 5-min swing low (longs) or above swing high (shorts). Let trends run.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Full Exit: R:R or Level</span><span class="rule-badge badge-green">TARGET</span></div><p>Full exit at 2:1 R:R OR at key level (PDH, PDL, OI wall, round number). Whichever comes first.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Time Exit: 14:45 IST</span><span class="rule-badge badge-amber">MANDATORY</span></div><p>No overnight holding for intraday options. Everything flat by 15:15 latest. Start winding down at 14:45.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CHECKLISTS ===================== -->
+  <div class="section" id="checklist">
+    <h2 class="section-title">Pre-Trade & Post-Trade Checklists</h2>
+    <p class="section-subtitle">Click to check off items. Use these before every trade and at end of day.</p>
+
+    <div class="grid grid-2">
+      <div class="checklist">
+        <h4>Pre-Trade Checklist (Before Every Entry)</h4>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Day-type classified (after 09:45)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Confluence score ≥ 4/6?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Not in a dead zone (09:15–09:45, 12:30–13:30, after 14:45)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>SL level defined (structure-based, not arbitrary)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Position size calculated (≤1% capital risk)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Target level defined (1:1 partial, 2:1 full)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Not exceeding 3 concurrent positions?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>No event risk in next 2 hours?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Daily loss limit not breached?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Trade logged in journal BEFORE entry?</span></div>
+      </div>
+
+      <div class="checklist">
+        <h4>End-of-Day Review</h4>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>All positions closed?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>P&L recorded (gross and net after brokerage)?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Each trade reviewed: was the thesis correct?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Did I follow my SL rules? If not, log the violation.</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Day-type classification accuracy — was I right?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Any revenge trades? Emotional entries? Log them.</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>What was the best trade I DIDN'T take? Why?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Updated weekly P&L tracker?</span></div>
+        <div class="check-item"><div class="check-box" onclick="this.classList.toggle('checked')">✓</div><span>Prepared watchlist / levels for tomorrow?</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MISTAKE LOG ===================== -->
+  <div class="section" id="mistakes">
+    <h2 class="section-title">Common Mistakes & Rules</h2>
+    <p class="section-subtitle">A catalog of recurring mistakes and the hard rules that prevent them. Review weekly.</p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-label"><span class="dot dot-red"></span> Emotional Mistakes</div>
+        <h3>Psychology Traps</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Revenge Trading</span><span class="rule-badge badge-red">KILLER</span></div><p>Taking an impulsive trade after a loss to "win it back." Rule: After any loss, wait 15 minutes. If daily loss &gt;1.5%, stop completely.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">FOMO Entry</span><span class="rule-badge badge-red">KILLER</span></div><p>Entering because "it's running away." Rule: If you missed the entry, wait for a pullback. No chasing. There's always another trade.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Moving Stop-Loss</span><span class="rule-badge badge-red">KILLER</span></div><p>Widening SL to avoid being stopped out. Rule: SL is sacred. If it hits, accept it. Moving SL = adding to losers with extra steps.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Overtrading</span><span class="rule-badge badge-amber">WARNING</span></div><p>Taking too many trades to feel productive. Rule: Max 5 trades per day. Quality over quantity. Flat is a position.</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><span class="dot dot-amber"></span> Technical Mistakes</div>
+        <h3>Execution Errors</h3>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Wrong Strike / Expiry</span><span class="rule-badge badge-amber">CHECK</span></div><p>Double-check strike price AND expiry before clicking buy. On Dhan: verify Tuesday expiry. Fat finger = instant loss.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Ignoring Spread</span><span class="rule-badge badge-amber">CHECK</span></div><p>Wide bid-ask spread in OTM options eats into edge. Rule: Don't trade options with spread &gt;5% of premium.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">No SL Placed</span><span class="rule-badge badge-red">KILLER</span></div><p>"I'll watch it" is not a risk management strategy. Rule: SL order must be placed within 30 seconds of entry. No exceptions.</p></div>
+        <div class="rule"><div class="rule-head"><span class="rule-title">Trading in Low Liquidity</span><span class="rule-badge badge-amber">CHECK</span></div><p>Deep OTM options on non-expiry days have poor liquidity. Rule: Only trade strikes within ±5 of ATM unless on expiry day.</p></div>
+      </div>
+    </div>
+
+    <div class="callout callout-green" style="margin-top:20px;">
+      <strong>The #1 Rule:</strong> Capital preservation beats profit-seeking. Your job is to survive long enough for your edge to compound. One blown account erases months of gains. When in doubt, sit out.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Tab navigation
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
